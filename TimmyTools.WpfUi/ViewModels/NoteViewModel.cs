@@ -53,6 +53,12 @@ public class NoteViewModel : BaseViewModel
 
     public NoteModel Note { get; set; } = null!;
 
+    // The View sets this to flush pending TextBox bindings before each save.
+    // Needed because RtfContent uses UpdateSourceTrigger=LostFocus to keep
+    // selection stable during typing — without a flush, periodic saves would
+    // miss in-progress edits.
+    public Action? FlushPendingEdits { get; set; }
+
     public async Task Initialize(int? noteId = null, NoteModel? parent = null, nint? managementWindowHandle = null)
     {
         if (noteId is null)
@@ -117,6 +123,8 @@ public class NoteViewModel : BaseViewModel
 
     public async Task SaveNote()
     {
+        FlushPendingEdits?.Invoke();
+
         if (Note.IsSaved)
             return;
 

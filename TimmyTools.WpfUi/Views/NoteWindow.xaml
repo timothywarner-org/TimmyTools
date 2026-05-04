@@ -272,7 +272,7 @@
                                          FontSize="18"
                                          x:Name="NoteTextBox"
                                          Padding="5,5,5,5"
-                                         RtfContent="{Binding Note.Content, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         RtfContent="{Binding Note.Content, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
 
                                          SpellCheck.IsEnabled="{Binding EditorSettings.CheckSpelling}"
                                          NewLineAtEnd="{Binding EditorSettings.NewLineAtEnd}"

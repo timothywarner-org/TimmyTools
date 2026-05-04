@@ -48,10 +48,17 @@ public partial class NoteWindow : Window
 
         InitializeComponent();
 
+        // Flush the LostFocus-triggered RtfContent binding before each save
+        // so the periodic auto-save still captures in-progress edits.
+        _viewModel.FlushPendingEdits = () =>
+            BindingOperations.GetBindingExpression(
+                NoteTextBox,
+                Controls.NoteTextBoxControl.RtfContentProperty
+            )?.UpdateSource();
+
         Activated += Window_Activated;
         Closing += Window_Closing;
         Deactivated += Window_Deactivated;
-        MouseDown += NoteWindow_MouseDown;
         MouseEnter += Window_MouseEnter;
         MouseLeave += Window_MouseLeave;
         Loaded += Window_Loaded;
@@ -104,18 +111,6 @@ public partial class NoteWindow : Window
         );
     }
 
-    private void NoteWindow_MouseDown(object sender, MouseButtonEventArgs e)
-    {
-        // Check mouse button is pressed as a missed click of a button
-        // can cause issues with DragMove().
-        if (e.LeftButton != MouseButtonState.Pressed)
-            return;
-
-        DragMove();
-
-        _viewModel.OnWindowMoved(Left, Top);
-    }
-
     private void NoteWindow_StateChanged(object? sender, EventArgs e)
     {
         if (WindowState == WindowState.Minimized)
@@ -144,7 +139,9 @@ public partial class NoteWindow : Window
     {
         _viewModel.Note.IsFocused = true;
         _viewModel.UpdateOpacity();
-        _viewModel.UpdateAlwaysOnTop();
+        // Defer the topmost toggle past the current input gesture so it
+        // doesn't reorder the window mid-click/drag and disrupt selection.
+        Dispatcher.BeginInvoke(_viewModel.UpdateAlwaysOnTop, System.Windows.Threading.DispatcherPriority.Input);
         ShowTitleBar();
     }
 
