@@ -114,11 +114,9 @@ public class NoteViewModel : BaseViewModel
         if (Note.WindowHandle == 0)
             return;
 
-        nint hWndInsertAfter = Note.IsFocused ? HWND.TOPMOST : HWND.NOTOPMOST;
-
         uint uFlags = SWP.NOMOVE | SWP.NOSIZE | SWP.NOACTIVATE;
 
-        _ = User32.SetWindowPos(Note.WindowHandle, hWndInsertAfter, 0, 0, 0, 0, uFlags);
+        _ = User32.SetWindowPos(Note.WindowHandle, HWND.TOPMOST, 0, 0, 0, 0, uFlags);
     }
 
     public async Task SaveNote()

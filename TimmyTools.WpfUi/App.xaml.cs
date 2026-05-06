@@ -23,8 +23,8 @@ public partial class App : Application
     public const bool IsDebugMode = false;
 #endif
 
-    private const string UniqueEventName = (IsDebugMode) ? "176fc692-28c2-4ed0-ba64-60fbd7165018" : "b1bc1a95-e142-4031-a239-dd0e14568a3c";
-    private const string UniqueMutexName = (IsDebugMode) ? "e21c6456-5a11-4f37-a08d-83661b642abe" : "a46c6290-525a-40d8-9880-c95d35a49057";
+    private const string UniqueEventName = (IsDebugMode) ? "887a0c9a-5e1a-4c9b-8f3a-9e1b2c3d4e5f" : "332b1c09-4d2a-4f3b-8e1c-0a1b2c3d4e5f";
+    private const string UniqueMutexName = (IsDebugMode) ? "556d1e0c-9a2b-4c3d-8e7f-6a5b4c3d2e1f" : "119e0f1a-2b3c-4d5e-6f7a-8b9c0d1e2f3a";
 
     private Mutex _mutex = null!;
 

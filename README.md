@@ -16,8 +16,8 @@
 
 ```bash
 # Clone and build
-git clone https://github.com/timothywarner-org/PinnyNotes.git
-cd PinnyNotes
+git clone https://github.com/timothywarner-org/TimmyTools.git
+cd TimmyTools
 dotnet build TimmyTools.sln
 
 # Run
@@ -248,12 +248,12 @@ Access settings from the title bar context menu or the system tray. Settings are
 
 ### Installer
 
-1. Go to the [Releases page](https://github.com/timothywarner-org/PinnyNotes/releases).
+1. Go to the [Releases page](https://github.com/timothywarner-org/TimmyTools/releases).
 2. Download the latest `.msi` installer and run it.
 
 ### Portable
 
-1. Download the latest `.zip` from the [Releases page](https://github.com/timothywarner-org/PinnyNotes/releases).
+1. Download the latest `.zip` from the [Releases page](https://github.com/timothywarner-org/TimmyTools/releases).
 2. Extract it anywhere and run `Timmy Tools.exe`.
 3. Data is stored next to the executable (no AppData usage).
 
@@ -265,8 +265,8 @@ Access settings from the title bar context menu or the system tray. Settings are
 
 ```bash
 # Clone the repository
-git clone https://github.com/timothywarner-org/PinnyNotes.git
-cd PinnyNotes
+git clone https://github.com/timothywarner-org/TimmyTools.git
+cd TimmyTools
 
 # Build the solution
 dotnet build TimmyTools.sln
@@ -505,7 +505,7 @@ stateDiagram-v2
 | **DI Container** | Microsoft.Extensions.DependencyInjection |
 | **Tray Icon** | H.NotifyIcon.Wpf |
 | **Schema Version** | 6 (with 5 sequential migrations from v1) |
-| **Data Location** | `%APPDATA%/Pinny Notes/pinny_notes.sqlite` (installed) or exe directory (portable/debug) |
+| **Data Location** | `%APPDATA%/Timmy Tools/timmy_tools.sqlite` (installed) or exe directory (portable/debug) |
 | **Single Instance** | Named Mutex + EventWaitHandle with separate GUIDs for Debug/Release |
 | **Win32 Interop** | P/Invoke to User32 for window positioning, always-on-top, and visibility control |
 | **NTP Protocol** | RFC 1305 v4 with 4 fallback servers and 10-minute sync interval |

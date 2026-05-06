@@ -4,69 +4,77 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TimmyTools is a WPF sticky notes application for Windows, forked from [63BeetleSmurf/TimmyTools](https://github.com/63BeetleSmurf/TimmyTools). The goal is to replicate and extend functionality inspired by Zhorn Software's Stickies.
+Timmy Tools is a Windows-only WPF desktop utility built as a teaching sidecar for technical training. It bundles three integrated tools accessible from a single tray icon and from each note's title bar: **sticky notes** (rich-text, pin-to-top, auto-save), an **NTP-synced atomic clock**, and a **break timer** with class-tracking fields.
+
+The repo folder is named `PinnyNotes` for historical reasons (the project was forked from [63BeetleSmurf/PinnyNotes](https://github.com/63BeetleSmurf/PinnyNotes)) but everything inside the folder is named TimmyTools/Timmy Tools. Don't rename the folder.
 
 ## Build & Run
 
 ```bash
-# Build the solution
-dotnet build TimmyTools.sln
-
-# Run the app
-dotnet run --project TimmyTools.WpfUi
-
-# Build release
-dotnet build TimmyTools.sln -c Release
+dotnet build TimmyTools.sln                    # debug build
+dotnet build TimmyTools.sln -c Release         # release build (use this — Tim runs from bin/Release)
+dotnet run --project TimmyTools.WpfUi          # run from source
 ```
 
-Target: .NET 10.0 (WPF, Windows-only). The solution has three projects but only two build via `dotnet`: **TimmyTools.Core** (class library) and **TimmyTools.WpfUi** (WPF exe). TimmyTools.Setup is a Visual Studio Installer project (.vdproj) and does not build from CLI.
+Target: **.NET 10.0** (`net10.0` for Core, `net10.0-windows` for WpfUi). The solution has three projects but only two build via `dotnet`: **TimmyTools.Core** (class library) and **TimmyTools.WpfUi** (WPF exe, output assembly is `Timmy Tools.exe`). **TimmyTools.Setup** is a Visual Studio Installer project (`.vdproj`) and does not build from CLI — it requires Visual Studio with the Installer Projects extension.
+
+If `dotnet build` fails with `MSB3027 / MSB3026` file-lock errors on `TimmyTools.Core.dll`, the running `Timmy Tools.exe` is holding the DLL. Close the app and rebuild. There are no automated tests in the repo.
 
 ## Architecture
 
-**MVVM with Pub/Sub Messaging** — Views bind to ViewModels, ViewModels communicate via `MessengerService` (publish/subscribe with typed messages), all services registered through Microsoft.Extensions.DependencyInjection in `App.xaml.cs`.
+**MVVM with pub/sub messaging.** Views bind to ViewModels, ViewModels communicate via `MessengerService` (typed message records under `Messages/`), and all services are wired up via `Microsoft.Extensions.DependencyInjection` in `App.xaml.cs`.
 
-### Project Layout
+### Project layout
 
-- **TimmyTools.Core** — Data layer. SQLite database via Microsoft.Data.Sqlite, repository pattern, DTOs (record types), enums, and schema migrations.
-- **TimmyTools.WpfUi** — UI layer. Views (WPF windows/controls), ViewModels, Models (INotifyPropertyChanged), Services, Tools, Commands, Interop (Win32 API calls).
+- **TimmyTools.Core** — Data layer. SQLite via `Microsoft.Data.Sqlite`, repository pattern, immutable `record` DTOs, enums, and sequential schema migrations.
+- **TimmyTools.WpfUi** — UI layer. Views (XAML + code-behind), ViewModels, observable Models (`INotifyPropertyChanged`), Services, Commands, Controls, Helpers, Interop (Win32 P/Invoke), Themes.
 
-### Key Architectural Flows
+### Three windowed tools, one tray icon
 
-**Note Lifecycle:** `WindowService` creates `NoteWindow` → `NoteViewModel.Initialize()` creates/loads `NoteModel` → auto-save via `DispatcherTimer` (5s interval) → `CloseNote()` saves or deletes if empty. State changes publish `NoteActionMessage`.
+- `NoteWindow` — the sticky note. Pinned topmost regardless of focus (see `NoteViewModel.UpdateAlwaysOnTop` — always sets `HWND_TOPMOST`). Title bar buttons launch the other two tools.
+- `AtomicClockWindow` / `NtpService` — NTP v4 (RFC 1305) client with four fallback servers (time.nist.gov, pool.ntp.org, time.google.com, time.windows.com) and a 10-minute re-sync interval.
+- `BreakTimerWindow` — countdown with presets, custom durations, and "Class" / "Next Up" fields.
 
-**Tools System:** 20 text transformation tools inherit from `BaseTool` (Template Method pattern). Each tool builds its own `MenuItem` tree. Tools are instantiated in `NoteTextBoxContextMenu` and filtered by `ToolState` (Disabled/Enabled/Favourite) from settings. To add a new tool: create a class extending `BaseTool`, implement menu items, and register it in the `NoteTextBoxContextMenu` constructor's tools array.
+### Note lifecycle
 
-**Database Migrations:** `DatabaseInitializer` runs sequential migrations (`SchemaMigration` subclasses) from current version to target. Current schema version: 5. Migrations live in `TimmyTools.Core/Migrations/`.
+`WindowService` creates a `NoteWindow` → `NoteViewModel.Initialize()` creates or loads a `NoteModel` → auto-save runs every 5s via `DispatcherTimer` and on deactivate → `CloseNote()` saves, or deletes the row if the note is empty. State changes publish `NoteActionMessage` via `MessengerService`. `WindowService` tracks open windows by `NoteId` to prevent duplicates and manages singleton Settings/Management windows.
 
-**Settings:** Four model objects (`ApplicationSettingsModel`, `NoteSettingsModel`, `EditorSettingsModel`, `ToolSettingsModel`) loaded from DB via `SettingsService` on startup, saved on exit.
+### Settings pipeline
 
-**Window Management:** `WindowService` tracks open windows by NoteId, prevents duplicates, manages singleton settings/management windows. Inter-component communication uses `MessengerService` message types (records in `Messages/`).
+Four observable model objects — `ApplicationSettingsModel`, `NoteSettingsModel`, `EditorSettingsModel`, `ToolSettingsModel` — are loaded from SQLite by `SettingsService` on startup and saved on exit. They flow: `SettingsRepository` → immutable `SettingsDataDto` → `SettingsService` → models → `SettingsViewModel` data binding → `SettingsWindow.xaml`. User edits flow back through the same path.
 
-### Service Registration (App.xaml.cs)
+### Database & migrations
 
-- **Singletons:** DatabaseConfiguration, all Repositories, AppMetadataService, SettingsService, MessengerService, WindowService, ThemeService
-- **Transients:** NotifyIconService, SettingsWindow/ViewModel, ManagementWindow/ViewModel
+- SQLite at `%APPDATA%/Timmy Tools/timmy_tools.sqlite` (installed) or next to the exe (debug, or when a `portable.txt` marker file exists beside the exe).
+- **Current schema version: 7.** `DatabaseInitializer` (note: file is named `DatabaseInitialiser.cs` — British spelling in the codebase) walks sequential migrations from the user's current version up to `SchemaVersion`. Migrations live in `TimmyTools.Core/Migrations/` (`Schema1To2Migration` through `Schema6To7Migration`) and inherit from `_SchemaMigration`. To bump the schema: add a new `SchemaNToN+1Migration`, register it in `DatabaseInitialiser.UpdateDatabase`, and increment `DatabaseInitialiser.SchemaVersion`.
+- `DatabaseConfiguration` performs a one-shot data migration from the legacy PinnyNotes layout: renames `%APPDATA%\Pinny Notes` → `%APPDATA%\Timmy Tools`, `pinny_notes.sqlite` → `timmy_tools.sqlite`, and `pinny_notes_backup_*` → `timmy_tools_backup_*`. Don't remove this until the transition window ends.
+- `DatabaseBackupService` is a singleton started in `OnStartup` and stopped in `OnExit`.
 
-## Coding Conventions
+### Note text-box context menu
 
-- **No `var`** — explicit types enforced via .editorconfig (`csharp_style_var_*: false:warning`)
-- **British English spelling** — `Colour`, `Initialise`, etc. (spelling_languages = en-gb in .editorconfig)
-- **File-scoped namespaces** preferred
-- **Allman brace style** (braces on new lines)
-- 4-space indentation, CRLF line endings
-- PascalCase for types/members, `I` prefix for interfaces
-- DTOs use C# `record` types for immutability
-- Models use `BaseModel.SetProperty<T>()` which auto-sets `IsSaved = false`
-- Commands use `RelayCommand`/`RelayCommand<T>`
+The right-click menu inside a note is built procedurally in `Controls/ContextMenus/NoteTextBoxContextMenu.cs` — a single class that wires up Undo/Redo, clipboard ops, Font/Size/Style/Case/Color/Paragraph submenus, counts, and Locked toggle. There is **no `Tools/` folder and no `BaseTool` hierarchy** (an older design that has since been collapsed). To add a new submenu item, edit `NoteTextBoxContextMenu` directly — wire up a `MenuItem`, add it to the appropriate parent in the constructor, and bind it to a `RelayCommand` or a built-in `ApplicationCommands.*` target.
 
-## Database
+### Service registration (`App.xaml.cs::ConfigureServices`)
 
-SQLite stored at `%APPDATA%/Pinny Notes/pinny_notes.sqlite` (production) or exe directory (debug/portable mode, triggered by `portable.txt` marker file). Connection management opens/closes per operation.
+- **Singletons:** `DatabaseConfiguration`, `SettingsRepository`, `AppMetadataRepository`, `NoteRepository`, `AppMetadataService`, `SettingsService`, `MessengerService`, `WindowService`, `ThemeService`, `DatabaseBackupService`, `NtpService`
+- **Transients:** `NotifyIconService`, `SettingsWindow`/`SettingsViewModel`, `ManagementWindow`/`ManagementViewModel`, `BreakTimerWindow`/`BreakTimerViewModel`, `AtomicClockWindow`/`AtomicClockViewModel`
 
-## Single Instance
+### Single instance
 
-App uses a named Mutex (different GUIDs for Debug vs Release) and EventWaitHandle for inter-process communication. A second instance signals the first and exits.
+App uses a named `Mutex` plus an `EventWaitHandle` with separate GUIDs for Debug vs Release (see `App.xaml.cs:26-27`). A second instance signals the existing instance via the wait handle and exits — the running instance receives an `ApplicationActionMessage(ApplicationAction.NewInstance)` and creates a new note.
 
-## Win32 Interop
+### Win32 interop
 
-`Interop/` folder contains P/Invoke wrappers (User32) and `ScreenHelper` for multi-monitor support, always-on-top behavior, and taskbar/task-switcher visibility control.
+`Interop/` holds P/Invoke wrappers (`User32`, `HWND`, `SWP` constants) and `ScreenHelper` for multi-monitor bounds. Used for always-on-top z-order management, taskbar/Alt-Tab visibility, and window positioning. `NoteViewModel.UpdateAlwaysOnTop` calls `SetWindowPos(hWnd, HWND_TOPMOST, …, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE)` unconditionally so notes stay in front whether or not they're focused.
+
+## Coding conventions (.editorconfig-enforced)
+
+- **No `var`** — explicit types required (`csharp_style_var_*: false:warning`).
+- **British English spelling** in identifiers and the `.editorconfig` (`Colour`, `Initialise`, `CycleColours`, `DatabaseInitialiser`). The existing public surface uses these; a Tim-specific override in user memory says new code can use American English where it doesn't conflict with existing identifiers, but the existing British-spelled identifiers cannot be renamed without a migration effort.
+- **File-scoped namespaces.**
+- **Allman braces** (open brace on its own line).
+- 4-space indentation, CRLF line endings.
+- PascalCase for types/members, `I` prefix for interfaces.
+- DTOs are C# `record` types (immutable).
+- Models inherit `BaseModel` and use `SetProperty<T>()`, which auto-flips `IsSaved = false`.
+- Commands use `RelayCommand` / `RelayCommand<T>` from `Commands/`.

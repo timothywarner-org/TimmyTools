@@ -45,7 +45,7 @@ public class DatabaseBackupService(DatabaseConfiguration databaseConfiguration)
             if (!Directory.Exists(backupDir))
                 Directory.CreateDirectory(backupDir);
 
-            string backupPath = Path.Combine(backupDir, $"pinny_notes_backup_{_currentSlot + 1}.sqlite");
+            string backupPath = Path.Combine(backupDir, $"timmy_tools_backup_{_currentSlot + 1}.sqlite");
 
             if (File.Exists(backupPath))
                 File.Delete(backupPath);
