@@ -311,7 +311,7 @@ TimmyTools/
 │   │   ├── SettingsDataDto.cs          #   Settings data record (immutable)
 │   │   └── AppMetadataDataDto.cs       #   App metadata record (immutable)
 │   ├── Enums/                          #   Shared enumerations (14 enum files)
-│   ├── Migrations/                     #   Sequential schema migrations (v1-v6)
+│   ├── Migrations/                     #   Sequential schema migrations (v1→v7)
 │   └── Repositories/
 │       ├── _BaseRepository.cs          #   Shared SQLite helpers
 │       ├── NoteRepository.cs           #   CRUD for notes
@@ -504,7 +504,7 @@ stateDiagram-v2
 | **Database** | SQLite via Microsoft.Data.Sqlite |
 | **DI Container** | Microsoft.Extensions.DependencyInjection |
 | **Tray Icon** | H.NotifyIcon.Wpf |
-| **Schema Version** | 6 (with 5 sequential migrations from v1) |
+| **Schema Version** | 7 (with 6 sequential migrations from v1) |
 | **Data Location** | `%APPDATA%/Timmy Tools/timmy_tools.sqlite` (installed) or exe directory (portable/debug) |
 | **Single Instance** | Named Mutex + EventWaitHandle with separate GUIDs for Debug/Release |
 | **Win32 Interop** | P/Invoke to User32 for window positioning, always-on-top, and visibility control |

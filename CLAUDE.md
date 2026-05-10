@@ -31,7 +31,7 @@ If `dotnet build` fails with `MSB3027 / MSB3026` file-lock errors on `TimmyTools
 
 ### Three windowed tools, one tray icon
 
-- `NoteWindow` — the sticky note. Pinned topmost regardless of focus (see `NoteViewModel.UpdateAlwaysOnTop` — always sets `HWND_TOPMOST`). Title bar buttons launch the other two tools.
+- `NoteWindow` — the sticky note. Topmost when focused, demoted to non-topmost when deactivated (see `NoteViewModel.UpdateAlwaysOnTop` — picks `HWND_TOPMOST` vs `HWND_NOTOPMOST` from `Note.IsFocused`). Title bar buttons launch the other two tools.
 - `AtomicClockWindow` / `NtpService` — NTP v4 (RFC 1305) client with four fallback servers (time.nist.gov, pool.ntp.org, time.google.com, time.windows.com) and a 10-minute re-sync interval.
 - `BreakTimerWindow` — countdown with presets, custom durations, and "Class" / "Next Up" fields.
 
@@ -46,7 +46,7 @@ Four observable model objects — `ApplicationSettingsModel`, `NoteSettingsModel
 ### Database & migrations
 
 - SQLite at `%APPDATA%/Timmy Tools/timmy_tools.sqlite` (installed) or next to the exe (debug, or when a `portable.txt` marker file exists beside the exe).
-- **Current schema version: 7.** `DatabaseInitializer` (note: file is named `DatabaseInitialiser.cs` — British spelling in the codebase) walks sequential migrations from the user's current version up to `SchemaVersion`. Migrations live in `TimmyTools.Core/Migrations/` (`Schema1To2Migration` through `Schema6To7Migration`) and inherit from `_SchemaMigration`. To bump the schema: add a new `SchemaNToN+1Migration`, register it in `DatabaseInitialiser.UpdateDatabase`, and increment `DatabaseInitialiser.SchemaVersion`.
+- **Current schema version: 7.** `DatabaseInitializer` (note: the file is `DatabaseInitializer.cs` but the class is `DatabaseInitialiser` — British spelling on the type) walks sequential migrations from the user's current version up to `SchemaVersion`. Migrations live in `TimmyTools.Core/Migrations/` (`Schema1To2Migration` through `Schema6To7Migration`) and inherit from `_SchemaMigration`. To bump the schema: add a new `SchemaNToN+1Migration`, register it in `DatabaseInitialiser.UpdateDatabase`, and increment `DatabaseInitialiser.SchemaVersion`.
 - `DatabaseConfiguration` performs a one-shot data migration from the legacy PinnyNotes layout: renames `%APPDATA%\Pinny Notes` → `%APPDATA%\Timmy Tools`, `pinny_notes.sqlite` → `timmy_tools.sqlite`, and `pinny_notes_backup_*` → `timmy_tools_backup_*`. Don't remove this until the transition window ends.
 - `DatabaseBackupService` is a singleton started in `OnStartup` and stopped in `OnExit`.
 
@@ -65,7 +65,7 @@ App uses a named `Mutex` plus an `EventWaitHandle` with separate GUIDs for Debug
 
 ### Win32 interop
 
-`Interop/` holds P/Invoke wrappers (`User32`, `HWND`, `SWP` constants) and `ScreenHelper` for multi-monitor bounds. Used for always-on-top z-order management, taskbar/Alt-Tab visibility, and window positioning. `NoteViewModel.UpdateAlwaysOnTop` calls `SetWindowPos(hWnd, HWND_TOPMOST, …, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE)` unconditionally so notes stay in front whether or not they're focused.
+`Interop/` holds P/Invoke wrappers (`User32`, `HWND`, `SWP` constants) and `ScreenHelper` for multi-monitor bounds. Used for focus-tied z-order management, taskbar/Alt-Tab visibility, and window positioning. `NoteViewModel.UpdateAlwaysOnTop` calls `SetWindowPos(hWnd, Note.IsFocused ? HWND_TOPMOST : HWND_NOTOPMOST, …, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE)` so the note rides on top while it has focus and yields when another window is activated.
 
 ## Coding conventions (.editorconfig-enforced)
 
@@ -78,3 +78,7 @@ App uses a named `Mutex` plus an `EventWaitHandle` with separate GUIDs for Debug
 - DTOs are C# `record` types (immutable).
 - Models inherit `BaseModel` and use `SetProperty<T>()`, which auto-flips `IsSaved = false`.
 - Commands use `RelayCommand` / `RelayCommand<T>` from `Commands/`.
+
+## Window dragging
+
+Notes use a custom title bar (`WindowStyle="None"` + `WindowChrome` with `CaptionHeight="0"`), so OS-managed dragging is disabled. `NoteWindow.xaml.cs::TitleBar_MouseDown` handles the three click cases explicitly: right-click returns early (lets `TitleBarContextMenu` open), double-left-click toggles roll-up via `ToggleRollUp()` and marks the event handled, and single-left-click calls `Window.DragMove()`. Don't replace this with `WindowChrome.IsHitTestVisibleInChrome` — it conflicts with the roll-up logic.

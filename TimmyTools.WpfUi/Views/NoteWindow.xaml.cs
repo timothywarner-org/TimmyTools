@@ -234,11 +234,17 @@ public partial class NoteWindow : Window
 
     private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
     {
+        if (e.ChangedButton != MouseButton.Left)
+            return;
+
         if (e.ClickCount >= 2)
         {
             e.Handled = true;
             ToggleRollUp();
+            return;
         }
+
+        DragMove();
     }
 
     private void ToggleRollUp()

@@ -115,8 +115,9 @@ public class NoteViewModel : BaseViewModel
             return;
 
         uint uFlags = SWP.NOMOVE | SWP.NOSIZE | SWP.NOACTIVATE;
+        nint zOrder = Note.IsFocused ? HWND.TOPMOST : HWND.NOTOPMOST;
 
-        _ = User32.SetWindowPos(Note.WindowHandle, HWND.TOPMOST, 0, 0, 0, 0, uFlags);
+        _ = User32.SetWindowPos(Note.WindowHandle, zOrder, 0, 0, 0, 0, uFlags);
     }
 
     public async Task SaveNote()
