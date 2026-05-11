@@ -53,7 +53,7 @@ Timmy Tools includes three integrated utilities, all accessible from the system 
 
 | Tool | Description |
 |------|-------------|
-| **Sticky Notes** | Pin-to-top rich-text notes with auto-save, color themes, dark mode, transparency, window shade, auto-resize, and a full formatting context menu |
+| **Sticky Notes** | Rich-text notes with auto-save, color themes, dark mode, transparency, window shade, auto-resize, and a full formatting context menu. Stack as ordinary windows — click another app and the note steps aside |
 | **Atomic Clock** | NTP-synced analog and digital clock display with sync status indicator |
 | **Break Timer** | Countdown timer with presets (5/10/30/45 min), custom durations, class title, and "next up" tracking fields |
 
@@ -71,7 +71,7 @@ Run Timmy Tools from the Start Menu, desktop shortcut, or command line. A sticky
 - **Set a title**: Right-click the title bar and choose **Set Title**.
 - **Roll up / Window shade**: Double-click the title bar to collapse a note to just its title bar. Double-click again to restore.
 - **Auto-resize**: Notes automatically expand or shrink vertically as you type.
-- **Pin on top**: Notes are always-on-top by default. Use settings to change this.
+- **Normal window stacking**: Notes behave like any ordinary Windows window. Click another app and the note moves to the back; click the note to bring it forward.
 - **Format text**: Right-click inside the note for font, size, style, color, alignment, lists, and case transforms.
 - **Save to file**: Right-click the title bar and choose **Save** to export as RTF or TXT.
 
@@ -93,8 +93,8 @@ Left-click the system tray icon to open the **Management Window**, which shows a
 
 ### Note Management
 
-- **Pin / Always on Top** -- Keep notes visible above all other windows.
-- **Auto-Save** -- Notes are automatically saved every 5 seconds and on close.
+- **Normal Window Z-Order** -- Notes stack like any ordinary Windows window. They are not forced above other apps; clicking another window sends the note behind it, clicking the note brings it forward.
+- **Auto-Save** -- Notes are automatically saved every 2 seconds and on close.
 - **Auto-Resize** -- Note height adjusts automatically as content grows or shrinks.
 - **Window Shade / Roll-Up** -- Double-click the title bar to collapse a note to just its title bar; double-click again to restore.
 - **Note Titles** -- Assign custom titles for easy identification.
@@ -476,7 +476,7 @@ stateDiagram-v2
     Loading --> Active
 
     state Active {
-        Editing --> AutoSave: DispatcherTimer 5s
+        Editing --> AutoSave: DispatcherTimer 2s
         AutoSave --> NoteAction.Updated
     }
 
@@ -507,7 +507,7 @@ stateDiagram-v2
 | **Schema Version** | 7 (with 6 sequential migrations from v1) |
 | **Data Location** | `%APPDATA%/Timmy Tools/timmy_tools.sqlite` (installed) or exe directory (portable/debug) |
 | **Single Instance** | Named Mutex + EventWaitHandle with separate GUIDs for Debug/Release |
-| **Win32 Interop** | P/Invoke to User32 for window positioning, always-on-top, and visibility control |
+| **Win32 Interop** | P/Invoke to User32 for multi-monitor window positioning and taskbar/Alt-Tab visibility control (`WS_EX_TOOLWINDOW`) |
 | **NTP Protocol** | RFC 1305 v4 with 4 fallback servers and 10-minute sync interval |
 
 ### Service Registration Summary

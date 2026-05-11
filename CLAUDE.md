@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Timmy Tools is a Windows-only WPF desktop utility built as a teaching sidecar for technical training. It bundles three integrated tools accessible from a single tray icon and from each note's title bar: **sticky notes** (rich-text, pin-to-top, auto-save), an **NTP-synced atomic clock**, and a **break timer** with class-tracking fields.
+Timmy Tools is a Windows-only WPF desktop utility built as a teaching sidecar for technical training. It bundles three integrated tools accessible from a single tray icon and from each note's title bar: **sticky notes** (rich-text, auto-save, normal z-order), an **NTP-synced atomic clock**, and a **break timer** with class-tracking fields.
 
 The repo folder is named `PinnyNotes` for historical reasons (the project was forked from [63BeetleSmurf/PinnyNotes](https://github.com/63BeetleSmurf/PinnyNotes)) but everything inside the folder is named TimmyTools/Timmy Tools. Don't rename the folder.
 
@@ -31,13 +31,17 @@ If `dotnet build` fails with `MSB3027 / MSB3026` file-lock errors on `TimmyTools
 
 ### Three windowed tools, one tray icon
 
-- `NoteWindow` — the sticky note. Topmost when focused, demoted to non-topmost when deactivated (see `NoteViewModel.UpdateAlwaysOnTop` — picks `HWND_TOPMOST` vs `HWND_NOTOPMOST` from `Note.IsFocused`). Title bar buttons launch the other two tools.
+- `NoteWindow` — the sticky note. Uses standard WPF z-order — no `HWND_TOPMOST` intervention. Notes stack like any ordinary window: clicking another app sends the note behind it, clicking the note brings it forward. `Window_Activated` / `Window_Deactivated` (NoteWindow.xaml.cs:138-166) only update `Note.IsFocused` (read by `UpdateOpacity` for the "Opaque when focused" setting), title-bar visibility, and the deactivate-time save. Title bar buttons launch the other two tools. **Do not reintroduce `HWND_TOPMOST` tied to focus** — the prior focus-tied state machine had unfixable races and was removed; see memory `notes-topmost-when-focused.md`. If a future "pin this note" feature is requested, gate it on an explicit per-note `NoteSettings.AlwaysOnTop` boolean, not on focus.
 - `AtomicClockWindow` / `NtpService` — NTP v4 (RFC 1305) client with four fallback servers (time.nist.gov, pool.ntp.org, time.google.com, time.windows.com) and a 10-minute re-sync interval.
 - `BreakTimerWindow` — countdown with presets, custom durations, and "Class" / "Next Up" fields.
 
 ### Note lifecycle
 
-`WindowService` creates a `NoteWindow` → `NoteViewModel.Initialize()` creates or loads a `NoteModel` → auto-save runs every 5s via `DispatcherTimer` and on deactivate → `CloseNote()` saves, or deletes the row if the note is empty. State changes publish `NoteActionMessage` via `MessengerService`. `WindowService` tracks open windows by `NoteId` to prevent duplicates and manages singleton Settings/Management windows.
+`WindowService` creates a `NoteWindow` → `NoteViewModel.Initialize()` creates or loads a `NoteModel` → auto-save runs every 2s via `DispatcherTimer` and on deactivate → `CloseNote()` saves, or deletes the row if the note is empty. State changes publish `NoteActionMessage` via `MessengerService`. `WindowService` tracks open windows by `NoteId` to prevent duplicates and manages singleton Settings/Management windows.
+
+The RTF binding (`NoteTextBoxControl.RtfContentProperty`) uses `UpdateSourceTrigger=LostFocus` to keep selection stable during typing — which means periodic 2s saves would miss in-progress edits. `NoteViewModel.FlushPendingEdits` (an `Action` callback set by `NoteWindow.xaml.cs:53-57`) calls `BindingExpression.UpdateSource()` on the RTF binding before every save in `SaveNote()`, so auto-save captures the current text even while the textbox still has focus. Don't switch the binding to `PropertyChanged` — it makes selection jump during typing.
+
+Auto-resize (vertical) is guarded by `_isInitialLoadComplete` (NoteWindow.xaml.cs:32, set in `Window_Loaded` at DispatcherPriority.Loaded) so the first content load doesn't trigger a resize before the window is fully laid out.
 
 ### Settings pipeline
 
@@ -65,7 +69,7 @@ App uses a named `Mutex` plus an `EventWaitHandle` with separate GUIDs for Debug
 
 ### Win32 interop
 
-`Interop/` holds P/Invoke wrappers (`User32`, `HWND`, `SWP` constants) and `ScreenHelper` for multi-monitor bounds. Used for focus-tied z-order management, taskbar/Alt-Tab visibility, and window positioning. `NoteViewModel.UpdateAlwaysOnTop` calls `SetWindowPos(hWnd, Note.IsFocused ? HWND_TOPMOST : HWND_NOTOPMOST, …, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE)` so the note rides on top while it has focus and yields when another window is activated.
+`Interop/` holds P/Invoke wrappers (`User32`, `HWND`, `SWP`, `GWL`, `WS_EX` constants) and `ScreenHelper` for multi-monitor bounds. Currently used for **taskbar / Alt-Tab visibility** (`NoteViewModel.UpdateVisibility` toggles `WS_EX_TOOLWINDOW` via `GetWindowLongPtrW` / `SetWindowLongPtrW`) and **multi-monitor screen-bounds math** (`ScreenHelper` uses `MonitorFromWindow` / `GetMonitorInfoW` for note placement and gravity-based cascading). The `User32.SetWindowPos` P/Invoke and the `HWND.TOPMOST` / `HWND.NOTOPMOST` constants are currently unused — they're kept as a generic wrapper in case a future per-note "pin" feature needs them.
 
 ## Coding conventions (.editorconfig-enforced)
 
