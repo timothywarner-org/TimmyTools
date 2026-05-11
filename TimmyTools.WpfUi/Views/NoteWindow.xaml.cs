@@ -139,9 +139,6 @@ public partial class NoteWindow : Window
     {
         _viewModel.Note.IsFocused = true;
         _viewModel.UpdateOpacity();
-        // Defer the topmost toggle past the current input gesture so it
-        // doesn't reorder the window mid-click/drag and disrupt selection.
-        Dispatcher.BeginInvoke(_viewModel.UpdateAlwaysOnTop, System.Windows.Threading.DispatcherPriority.Input);
         ShowTitleBar();
     }
 
@@ -152,7 +149,6 @@ public partial class NoteWindow : Window
 
         _viewModel.Note.IsFocused = false;
         _viewModel.UpdateOpacity();
-        _viewModel.UpdateAlwaysOnTop();
         HideTitleBar();
 
         try

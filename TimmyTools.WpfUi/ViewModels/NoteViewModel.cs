@@ -71,7 +71,6 @@ public class NoteViewModel : BaseViewModel
     {
         Note.WindowHandle = windowHandle;
         UpdateVisibility();
-        UpdateAlwaysOnTop();
 
         _saveTimer.Start();
     }
@@ -107,17 +106,6 @@ public class NoteViewModel : BaseViewModel
             Note.ApplyBackgroundOpacity(opaqueOpacity);
         else
             Note.ApplyBackgroundOpacity(transparentOpacity);
-    }
-
-    public void UpdateAlwaysOnTop()
-    {
-        if (Note.WindowHandle == 0)
-            return;
-
-        uint uFlags = SWP.NOMOVE | SWP.NOSIZE | SWP.NOACTIVATE;
-        nint zOrder = Note.IsFocused ? HWND.TOPMOST : HWND.NOTOPMOST;
-
-        _ = User32.SetWindowPos(Note.WindowHandle, zOrder, 0, 0, 0, 0, uFlags);
     }
 
     public async Task SaveNote()
