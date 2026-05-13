@@ -132,10 +132,66 @@
                         ToolTip="Reset"
                         Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}"/>
                 <!-- Settings (always visible) -->
-                <Button Content="&#xE713;"
+                <Button x:Name="SettingsButton"
+                        Content="&#xE713;"
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="SettingsButton_Click"
-                        ToolTip="Break Timer Settings"/>
+                        ToolTip="Quick edit Class and Next Up"/>
+                <Popup x:Name="QuickEditPopup"
+                       PlacementTarget="{Binding ElementName=SettingsButton}"
+                       Placement="Bottom"
+                       StaysOpen="False"
+                       AllowsTransparency="True"
+                       HorizontalOffset="-540"
+                       VerticalOffset="4"
+                       Opened="QuickEditPopup_Opened"
+                       Closed="QuickEditPopup_Closed">
+                    <Border Background="#2A2A2A"
+                            BorderBrush="#555555"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            MinWidth="560"
+                            Padding="14">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="8"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="90"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0"
+                                       Text="Class"
+                                       Foreground="#CCCCCC"
+                                       VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="0" Grid.Column="1"
+                                     x:Name="ClassTitleTextBox"
+                                     Background="#1E1E1E"
+                                     Foreground="White"
+                                     BorderBrush="#555555"
+                                     CaretBrush="White"
+                                     Padding="6,4"
+                                     FontSize="14"
+                                     Text="{Binding BreakTimerSettings.ClassTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     KeyDown="QuickEditTextBox_KeyDown"/>
+                            <TextBlock Grid.Row="2" Grid.Column="0"
+                                       Text="Next Up"
+                                       Foreground="#CCCCCC"
+                                       VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="2" Grid.Column="1"
+                                     Background="#1E1E1E"
+                                     Foreground="White"
+                                     BorderBrush="#555555"
+                                     CaretBrush="White"
+                                     Padding="6,4"
+                                     FontSize="14"
+                                     Text="{Binding BreakTimerSettings.NextUp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     KeyDown="QuickEditTextBox_KeyDown"/>
+                        </Grid>
+                    </Border>
+                </Popup>
             </StackPanel>
         </Grid>
 
@@ -143,7 +199,7 @@
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Center"
                     Margin="0,0,0,20"
                     Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}">
-            <TextBlock Text="Next up: "
+            <TextBlock Text="Next up &#8212; "
                        FontSize="56" FontFamily="Segoe UI Light"
                        Foreground="#AAAAAA"/>
             <TextBlock Text="{Binding NextUp}"

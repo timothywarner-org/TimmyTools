@@ -84,6 +84,8 @@ public class BreakTimerViewModel : INotifyPropertyChanged, IDisposable
 
     public string NextUp => _breakTimerSettings.NextUp;
 
+    public BreakTimerSettingsModel BreakTimerSettings => _breakTimerSettings;
+
     public bool IsIdle => _state == TimerState.Idle;
 
     public bool IsRunning => _state == TimerState.Running;
