@@ -4,9 +4,11 @@ using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Shapes;
 
 using TimmyTools.Core.Enums;
 using TimmyTools.WpfUi.Commands;
+using TimmyTools.WpfUi.Views;
 
 namespace TimmyTools.WpfUi.Controls.ContextMenus;
 
@@ -20,11 +22,12 @@ public class NoteTextBoxContextMenu : ContextMenu
     private readonly MenuItem _cutMenuItem;
     private readonly MenuItem _pasteMenuItem;
     private readonly MenuItem _selectAllMenuItem;
+    private readonly MenuItem _insertLinkMenuItem;
     private readonly MenuItem _fontMenuItem;
     private readonly MenuItem _sizeMenuItem;
     private readonly MenuItem _styleMenuItem;
     private readonly MenuItem _caseMenuItem;
-    private readonly MenuItem _fontColorMenuItem;
+    private readonly MenuItem _highlightMenuItem;
     private readonly MenuItem _paragraphMenuItem;
     private readonly MenuItem _countsMenuItem;
     private readonly MenuItem _lineCountMenuItem;
@@ -79,11 +82,17 @@ public class NoteTextBoxContextMenu : ContextMenu
             Command = new RelayCommand(_noteTextBox.SelectAll)
         };
 
+        _insertLinkMenuItem = new()
+        {
+            Header = "Insert link...",
+            Command = new RelayCommand(InsertLinkPrompt)
+        };
+
         _fontMenuItem = BuildFontMenu();
         _sizeMenuItem = BuildSizeMenu();
         _styleMenuItem = BuildStyleMenu();
         _caseMenuItem = BuildCaseMenu();
-        _fontColorMenuItem = BuildFontColorMenu();
+        _highlightMenuItem = BuildHighlightMenu();
         _paragraphMenuItem = BuildParagraphMenu();
 
         _countsMenuItem = new() { Header = "Counts" };
@@ -138,8 +147,8 @@ public class NoteTextBoxContextMenu : ContextMenu
 
         Items.Add(new Separator());
 
-        Items.Add(_copyMenuItem);
         Items.Add(_cutMenuItem);
+        Items.Add(_copyMenuItem);
         Items.Add(_pasteMenuItem);
 
         Items.Add(new Separator());
@@ -148,14 +157,15 @@ public class NoteTextBoxContextMenu : ContextMenu
 
         Items.Add(new Separator());
 
+        Items.Add(_insertLinkMenuItem);
+
+        Items.Add(new Separator());
+
         Items.Add(_fontMenuItem);
         Items.Add(_sizeMenuItem);
         Items.Add(_styleMenuItem);
         Items.Add(_caseMenuItem);
-        Items.Add(_fontColorMenuItem);
-
-        Items.Add(new Separator());
-
+        Items.Add(_highlightMenuItem);
         Items.Add(_paragraphMenuItem);
 
         Items.Add(new Separator());
@@ -188,7 +198,88 @@ public class NoteTextBoxContextMenu : ContextMenu
                 Command = new RelayCommand(() => _noteTextBox.ApplyFontFamily(font))
             });
         }
+
+        // Text colours live inside the Font menu, after the families, matching the Stickies layout.
+        fontMenu.Items.Add(new Separator());
+        (string Name, Color Color)[] colors = [
+            ("Black", Colors.Black),
+            ("Red", Colors.Red),
+            ("Blue", Colors.Blue),
+            ("Green", Colors.Green),
+            ("Orange", Colors.Orange),
+            ("Purple", Colors.Purple),
+            ("Brown", Colors.Brown),
+            ("Gray", Colors.Gray)
+        ];
+        foreach ((string name, Color color) in colors)
+        {
+            fontMenu.Items.Add(new MenuItem
+            {
+                Header = name,
+                Icon = MakeSwatch(color),
+                Command = new RelayCommand(() => _noteTextBox.ApplyForeground(color))
+            });
+        }
         return fontMenu;
+    }
+
+    private MenuItem BuildHighlightMenu()
+    {
+        MenuItem highlightMenu = new() { Header = "Highlight" };
+
+        highlightMenu.Items.Add(new MenuItem
+        {
+            Header = "None",
+            Command = new RelayCommand(() => _noteTextBox.ApplyHighlight(null))
+        });
+        highlightMenu.Items.Add(new Separator());
+
+        // Sourced from the app's own note-colour palette (DefaultTheme.cs light tints) so highlights
+        // stay on-brand and readable behind dark text.
+        (string Name, string Hex)[] highlights = [
+            ("Yellow", "#FFFCDD"),
+            ("Orange", "#FEE8B9"),
+            ("Red", "#FFC4C6"),
+            ("Pink", "#EBBFE3"),
+            ("Purple", "#D0CEF3"),
+            ("Blue", "#B3D9EC"),
+            ("Aqua", "#C0E2E1"),
+            ("Green", "#E3EBC6")
+        ];
+        foreach ((string name, string hex) in highlights)
+        {
+            Color color = (Color)ColorConverter.ConvertFromString(hex);
+            highlightMenu.Items.Add(new MenuItem
+            {
+                Header = name,
+                Icon = MakeSwatch(color),
+                Command = new RelayCommand(() => _noteTextBox.ApplyHighlight(color))
+            });
+        }
+        return highlightMenu;
+    }
+
+    private static Rectangle MakeSwatch(Color color)
+        => new()
+        {
+            Width = 12,
+            Height = 12,
+            Fill = new SolidColorBrush(color),
+            Stroke = Brushes.Gray,
+            StrokeThickness = 1
+        };
+
+    private void InsertLinkPrompt()
+    {
+        InsertLinkDialog dialog = new()
+        {
+            Owner = Window.GetWindow(_noteTextBox)
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        if (Uri.TryCreate(dialog.LinkUrl, UriKind.Absolute, out Uri? uri))
+            _noteTextBox.InsertHyperlink(uri);
     }
 
     private MenuItem BuildSizeMenu()
@@ -255,30 +346,6 @@ public class NoteTextBoxContextMenu : ContextMenu
             Command = new RelayCommand(() => _noteTextBox.ApplyCaseTransform(CaseTransform.Title))
         });
         return caseMenu;
-    }
-
-    private MenuItem BuildFontColorMenu()
-    {
-        MenuItem fontColorMenu = new() { Header = "Font Color" };
-        (string Name, Color Color)[] colors = [
-            ("Black", Colors.Black),
-            ("Red", Colors.Red),
-            ("Blue", Colors.Blue),
-            ("Green", Colors.Green),
-            ("Orange", Colors.Orange),
-            ("Purple", Colors.Purple),
-            ("Brown", Colors.Brown),
-            ("Gray", Colors.Gray)
-        ];
-        foreach ((string name, Color color) in colors)
-        {
-            fontColorMenu.Items.Add(new MenuItem
-            {
-                Header = name,
-                Command = new RelayCommand(() => _noteTextBox.ApplyForeground(color))
-            });
-        }
-        return fontColorMenu;
     }
 
     private MenuItem BuildParagraphMenu()

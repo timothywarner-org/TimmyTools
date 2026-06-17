@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -6,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Navigation;
 
 using TimmyTools.Core.Enums;
 using TimmyTools.WpfUi.Commands;
@@ -26,6 +28,13 @@ public partial class NoteTextBoxControl : RichTextBox
         AllowDrop = true;
         VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
         HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
+
+        // Required for hyperlinks to raise navigation inside a RichTextBox. Must be set before
+        // any RTF loads so links restored from a saved note are clickable too. While editing,
+        // WPF follows links on Ctrl+Click; a plain click navigates only when the note is Locked
+        // (IsReadOnly == true). Set here, ahead of LoadRtfContent.
+        IsDocumentEnabled = true;
+        AddHandler(Hyperlink.RequestNavigateEvent, new RequestNavigateEventHandler(OnHyperlinkRequestNavigate));
 
         TextChanged += OnTextChanged;
         SelectionChanged += OnSelectionChanged;
@@ -394,6 +403,48 @@ public partial class NoteTextBoxControl : RichTextBox
 
     public void ApplyForeground(Color color)
         => Selection.ApplyPropertyValue(TextElement.ForegroundProperty, new SolidColorBrush(color));
+
+    // A null colour clears any existing highlight (the "None" choice in the menu).
+    public void ApplyHighlight(Color? color)
+        => Selection.ApplyPropertyValue(
+            TextElement.BackgroundProperty,
+            color is Color c ? new SolidColorBrush(c) : null);
+
+    public void InsertHyperlink(Uri navigateUri)
+    {
+        if (Selection.IsEmpty)
+        {
+            // No selection: drop the URL itself in as the clickable text at the caret.
+            Hyperlink link = new(new Run(navigateUri.ToString()))
+            {
+                NavigateUri = navigateUri
+            };
+            if (CaretPosition.Paragraph is Paragraph paragraph)
+                paragraph.Inlines.Add(link);
+        }
+        else
+        {
+            // Wrap the current selection. The two-pointer constructor re-parents the selected
+            // inlines under the new Hyperlink, preserving their text and formatting.
+            _ = new Hyperlink(Selection.Start, Selection.End)
+            {
+                NavigateUri = navigateUri
+            };
+        }
+    }
+
+    private void OnHyperlinkRequestNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            // No registered handler for the scheme, or shell refused; ignore silently.
+        }
+        e.Handled = true;
+    }
 
     public void ToggleBold()
     {
