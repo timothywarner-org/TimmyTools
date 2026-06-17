@@ -55,7 +55,7 @@ Timmy Tools includes three integrated utilities, all accessible from the system 
 |------|-------------|
 | **Sticky Notes** | Rich-text notes with auto-save, color themes, dark mode, transparency, window shade, auto-resize, and a full formatting context menu. Stack as ordinary windows — click another app and the note steps aside |
 | **Atomic Clock** | NTP-synced analog and digital clock display with sync status indicator |
-| **Break Timer** | Countdown timer with presets (5/10/30/45 min), custom durations, class title, and "next up" tracking fields |
+| **Break Timer** | Countdown timer with presets (5/10/30/45 min), custom durations (default 10), class title, and segment/topic tracking fields |
 
 ---
 
@@ -81,7 +81,7 @@ Click the clock icon on any note's title bar. The window shows an analog clock f
 
 ### 4. Start a break timer
 
-Click the timer icon on any note's title bar. Choose a preset duration or enter a custom time. Use the **Class** and **Next Up** fields to display what you're teaching and what's coming after the break. The window turns green when the break is over.
+Click the timer icon on any note's title bar. Choose a preset duration or enter a custom time. Use the gear popup's **Class**, **Segment**, and **Topic** fields to display what you're teaching and what's coming after the break; the footer composes them as `Next Up | Segment X | Topic`. The window turns green when the break is over.
 
 ### 5. Manage all notes
 
@@ -172,9 +172,11 @@ The Break Timer is designed for pacing training sessions with clear visual feedb
 | Feature | Details |
 |---------|---------|
 | **Presets** | 5, 10, 30, and 45 minute quick-start buttons |
-| **Custom duration** | Enter any duration from 1 to 999 minutes |
+| **Custom duration** | Enter any duration from 1 to 999 minutes (defaults to 10) |
 | **Class field** | Text input to display the current class or session title |
-| **Next Up field** | Text input to show what's coming after the break |
+| **Segment field** | Numeric input for the upcoming segment number |
+| **Topic field** | Text input for the upcoming topic |
+| **Composed footer** | On-screen footer reads `Next Up \| Segment X \| Topic`; empty parts are omitted |
 | **Countdown display** | Large MM:SS (or H:MM:SS) with verbose "X minutes Y seconds" text |
 | **Progress bar** | Visual green progress indicator |
 | **Pause / Resume** | Pause the countdown and resume where you left off |
@@ -188,8 +190,8 @@ Right-click inside any note for the full formatting and transformation menu:
 
 | Menu | Actions |
 |------|---------|
-| **Font** | Segoe UI, Arial, Calibri, Consolas, Courier New, Times New Roman |
-| **Size** | 8, 10, 12, 14, 16, 18, 20, 24, 28, 36 |
+| **Font** | Segoe UI, Arial, Calibri, Consolas, Courier New, Times New Roman, JetBrains Mono, JetBrainsMono NF, Operator Mono, Poppins, Tekton Pro |
+| **Size** | 8, 10, 12, 14, 16, 18, 20, 24, 28, 36, 48, 56, 64, 72, 84 |
 | **Style** | Bold, Italic, Underline, Clear Formatting |
 | **Case** | Lower, Upper, Title |
 | **Font Color** | Black, Red, Blue, Green, Orange, Purple, Brown, Gray |
@@ -311,7 +313,7 @@ TimmyTools/
 │   │   ├── SettingsDataDto.cs          #   Settings data record (immutable)
 │   │   └── AppMetadataDataDto.cs       #   App metadata record (immutable)
 │   ├── Enums/                          #   Shared enumerations (14 enum files)
-│   ├── Migrations/                     #   Sequential schema migrations (v1→v7)
+│   ├── Migrations/                     #   Sequential schema migrations (v1→v8)
 │   └── Repositories/
 │       ├── _BaseRepository.cs          #   Shared SQLite helpers
 │       ├── NoteRepository.cs           #   CRUD for notes
@@ -504,7 +506,7 @@ stateDiagram-v2
 | **Database** | SQLite via Microsoft.Data.Sqlite |
 | **DI Container** | Microsoft.Extensions.DependencyInjection |
 | **Tray Icon** | H.NotifyIcon.Wpf |
-| **Schema Version** | 7 (with 6 sequential migrations from v1) |
+| **Schema Version** | 8 (with 7 sequential migrations from v1) |
 | **Data Location** | `%APPDATA%/Timmy Tools/timmy_tools.sqlite` (installed) or exe directory (portable/debug) |
 | **Single Instance** | Named Mutex + EventWaitHandle with separate GUIDs for Debug/Release |
 | **Win32 Interop** | P/Invoke to User32 for multi-monitor window positioning and taskbar/Alt-Tab visibility control (`WS_EX_TOOLWINDOW`) |

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -30,7 +31,7 @@ public class BreakTimerViewModel : INotifyPropertyChanged, IDisposable
     private string _timeRemainingText = "00:00";
     private string _verboseTimeText = "";
     private double _progressFraction;
-    private int _customMinutes = 5;
+    private int _customMinutes = 10;
 
     public BreakTimerViewModel(SettingsService settingsService)
     {
@@ -83,6 +84,30 @@ public class BreakTimerViewModel : INotifyPropertyChanged, IDisposable
     public string ClassTitle => _breakTimerSettings.ClassTitle;
 
     public string NextUp => _breakTimerSettings.NextUp;
+
+    // Exposed for two-way binding from the quick-edit overlay so the numeric field
+    // parses straight onto an int rather than through the string-typed NextUp path.
+    public int Segment
+    {
+        get => _breakTimerSettings.Segment;
+        set => _breakTimerSettings.Segment = value;
+    }
+
+    // The footer is composed here (not in XAML) so the "|" separators can never be
+    // fumbled by editing the fields. Empty parts drop out: no segment and no topic
+    // collapses to just "Next Up".
+    public string NextUpDisplay
+    {
+        get
+        {
+            List<string> parts = new() { "Next Up" };
+            if (_breakTimerSettings.Segment > 0)
+                parts.Add($"Segment {_breakTimerSettings.Segment}");
+            if (!string.IsNullOrWhiteSpace(_breakTimerSettings.NextUp))
+                parts.Add(_breakTimerSettings.NextUp);
+            return string.Join(" | ", parts);
+        }
+    }
 
     public BreakTimerSettingsModel BreakTimerSettings => _breakTimerSettings;
 
@@ -212,9 +237,19 @@ public class BreakTimerViewModel : INotifyPropertyChanged, IDisposable
     private void OnBreakTimerSettingsChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(BreakTimerSettingsModel.ClassTitle))
+        {
             OnPropertyChanged(nameof(ClassTitle));
+        }
         else if (e.PropertyName == nameof(BreakTimerSettingsModel.NextUp))
+        {
             OnPropertyChanged(nameof(NextUp));
+            OnPropertyChanged(nameof(NextUpDisplay));
+        }
+        else if (e.PropertyName == nameof(BreakTimerSettingsModel.Segment))
+        {
+            OnPropertyChanged(nameof(Segment));
+            OnPropertyChanged(nameof(NextUpDisplay));
+        }
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)

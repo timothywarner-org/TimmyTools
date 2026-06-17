@@ -80,7 +80,8 @@ public class SettingsRepository(DatabaseConfiguration databaseConfiguration) : B
             Tool_UrlState                       INTEGER DEFAULT 1,
 
             BreakTimer_ClassTitle               TEXT    DEFAULT '',
-            BreakTimer_NextUp                   TEXT    DEFAULT ''
+            BreakTimer_NextUp                   TEXT    DEFAULT '',
+            BreakTimer_Segment                  INTEGER DEFAULT 0
         )
     ";
 
@@ -151,7 +152,8 @@ public class SettingsRepository(DatabaseConfiguration databaseConfiguration) : B
             CaretColour: GetEnum<CaretColour>(reader, "Editor_CaretColour"),
 
             ClassTitle: GetString(reader, "BreakTimer_ClassTitle"),
-            NextUp: GetString(reader, "BreakTimer_NextUp")
+            NextUp: GetString(reader, "BreakTimer_NextUp"),
+            Segment: GetInt(reader, "BreakTimer_Segment")
         );
     }
 
@@ -211,7 +213,8 @@ public class SettingsRepository(DatabaseConfiguration databaseConfiguration) : B
                     Editor_CaretColour = @editor_CaretColour,
 
                     BreakTimer_ClassTitle = @breakTimer_ClassTitle,
-                    BreakTimer_NextUp = @breakTimer_NextUp
+                    BreakTimer_NextUp = @breakTimer_NextUp,
+                    BreakTimer_Segment = @breakTimer_Segment
                 WHERE
                     Id = @id;
             ",
@@ -262,6 +265,7 @@ public class SettingsRepository(DatabaseConfiguration databaseConfiguration) : B
 
                 new("@breakTimer_ClassTitle", settings.ClassTitle),
                 new("@breakTimer_NextUp", settings.NextUp),
+                new("@breakTimer_Segment", settings.Segment),
 
                 new("@id", settings.Id)
             ]

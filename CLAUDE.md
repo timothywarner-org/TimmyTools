@@ -33,7 +33,7 @@ If `dotnet build` fails with `MSB3027 / MSB3026` file-lock errors on `TimmyTools
 
 - `NoteWindow` — the sticky note. Uses standard WPF z-order — no `HWND_TOPMOST` intervention. Notes stack like any ordinary window: clicking another app sends the note behind it, clicking the note brings it forward. `Window_Activated` / `Window_Deactivated` (NoteWindow.xaml.cs:138-166) only update `Note.IsFocused` (read by `UpdateOpacity` for the "Opaque when focused" setting), title-bar visibility, and the deactivate-time save. Title bar buttons launch the other two tools. **Do not reintroduce `HWND_TOPMOST` tied to focus** — the prior focus-tied state machine had unfixable races and was removed; see memory `notes-topmost-when-focused.md`. If a future "pin this note" feature is requested, gate it on an explicit per-note `NoteSettings.AlwaysOnTop` boolean, not on focus.
 - `AtomicClockWindow` / `NtpService` — NTP v4 (RFC 1305) client with four fallback servers (time.nist.gov, pool.ntp.org, time.google.com, time.windows.com) and a 10-minute re-sync interval.
-- `BreakTimerWindow` — countdown with presets, custom durations, and "Class" / "Next Up" fields.
+- `BreakTimerWindow` — countdown with presets, custom durations (default **10 min**), and a quick-edit gear popup with **Class / Segment / Topic** fields. The footer is **composed in `BreakTimerViewModel.NextUpDisplay`** as `Next Up | Segment X | Topic` (empty parts drop out), not bound to a single string — don't collapse it back to one field. `Topic` reuses the `BreakTimer_NextUp` column; `Segment` is the `int Segment` column added in schema v8.
 
 ### Note lifecycle
 
@@ -50,7 +50,7 @@ Four observable model objects — `ApplicationSettingsModel`, `NoteSettingsModel
 ### Database & migrations
 
 - SQLite at `%APPDATA%/Timmy Tools/timmy_tools.sqlite` (installed) or next to the exe (debug, or when a `portable.txt` marker file exists beside the exe).
-- **Current schema version: 7.** `DatabaseInitializer` (note: the file is `DatabaseInitializer.cs` but the class is `DatabaseInitialiser` — British spelling on the type) walks sequential migrations from the user's current version up to `SchemaVersion`. Migrations live in `TimmyTools.Core/Migrations/` (`Schema1To2Migration` through `Schema6To7Migration`) and inherit from `_SchemaMigration`. To bump the schema: add a new `SchemaNToN+1Migration`, register it in `DatabaseInitialiser.UpdateDatabase`, and increment `DatabaseInitialiser.SchemaVersion`.
+- **Current schema version: 8.** `DatabaseInitializer` (note: the file is `DatabaseInitializer.cs` but the class is `DatabaseInitialiser` — British spelling on the type) walks sequential migrations from the user's current version up to `SchemaVersion`. Migrations live in `TimmyTools.Core/Migrations/` (`Schema1To2Migration` through `Schema7To8Migration`) and inherit from `_SchemaMigration`. To bump the schema: add a new `SchemaNToN+1Migration`, register it in `DatabaseInitialiser.UpdateDatabase`, and increment `DatabaseInitialiser.SchemaVersion`. The 7→8 step added the `BreakTimer_Segment` column.
 - `DatabaseConfiguration` performs a one-shot data migration from the legacy PinnyNotes layout: renames `%APPDATA%\Pinny Notes` → `%APPDATA%\Timmy Tools`, `pinny_notes.sqlite` → `timmy_tools.sqlite`, and `pinny_notes_backup_*` → `timmy_tools_backup_*`. Don't remove this until the transition window ends.
 - `DatabaseBackupService` is a singleton started in `OnStartup` and stopped in `OnExit`.
 

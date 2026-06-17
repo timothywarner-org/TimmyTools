@@ -157,6 +157,8 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="8"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="8"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="90"/>
@@ -177,10 +179,23 @@
                                      Text="{Binding BreakTimerSettings.ClassTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      KeyDown="QuickEditTextBox_KeyDown"/>
                             <TextBlock Grid.Row="2" Grid.Column="0"
-                                       Text="Next Up"
+                                       Text="Segment"
                                        Foreground="#CCCCCC"
                                        VerticalAlignment="Center"/>
                             <TextBox Grid.Row="2" Grid.Column="1"
+                                     Background="#1E1E1E"
+                                     Foreground="White"
+                                     BorderBrush="#555555"
+                                     CaretBrush="White"
+                                     Padding="6,4"
+                                     FontSize="14"
+                                     Text="{Binding Segment, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     KeyDown="QuickEditTextBox_KeyDown"/>
+                            <TextBlock Grid.Row="4" Grid.Column="0"
+                                       Text="Topic"
+                                       Foreground="#CCCCCC"
+                                       VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="4" Grid.Column="1"
                                      Background="#1E1E1E"
                                      Foreground="White"
                                      BorderBrush="#555555"
@@ -195,14 +210,11 @@
             </StackPanel>
         </Grid>
 
-        <!-- Next Up (centered, larger text at bottom) -->
+        <!-- Next Up footer: composed in the ViewModel as "Next Up | Segment X | Topic" -->
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Center"
                     Margin="0,0,0,20"
                     Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}">
-            <TextBlock Text="Next up &#8212; "
-                       FontSize="56" FontFamily="Segoe UI Light"
-                       Foreground="#AAAAAA"/>
-            <TextBlock Text="{Binding NextUp}"
+            <TextBlock Text="{Binding NextUpDisplay}"
                        FontSize="56" FontFamily="Segoe UI Light"
                        Foreground="#CCCCCC"/>
         </StackPanel>

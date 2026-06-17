@@ -42,7 +42,8 @@ public class SettingsService(SettingsRepository settingsRepository)
         BreakTimerSettings = new()
         {
             ClassTitle = settings.ClassTitle,
-            NextUp = settings.NextUp
+            NextUp = settings.NextUp,
+            Segment = settings.Segment
         };
 
         EditorSettings = new()
@@ -128,7 +129,8 @@ public class SettingsService(SettingsRepository settingsRepository)
                 MiddleClickPaste: EditorSettings.MiddleClickPaste,
 
                 ClassTitle: BreakTimerSettings.ClassTitle,
-                NextUp: BreakTimerSettings.NextUp
+                NextUp: BreakTimerSettings.NextUp,
+                Segment: BreakTimerSettings.Segment
             )
         );
     }

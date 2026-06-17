@@ -1,6 +1,19 @@
 # Change Log
 
 
+## Unreleased
+
+### Added
+- Break Timer quick-edit popup (gear icon) with Class, Segment and Topic fields.
+- Break Timer footer now shows "Next Up | Segment X | Topic" (empty parts omitted).
+- Additional context menu fonts, JetBrains Mono, JetBrainsMono NF, Operator Mono, Poppins and Tekton Pro.
+- Larger context menu font sizes, 48, 56, 64, 72 and 84.
+
+### Changed
+- Break Timer default custom duration changed from 5 to 10 minutes.
+- Database migration to schema v8, adds BreakTimer_Segment column.
+
+
 ## v1.16.0 - 23/02/2026
 
 ### Added

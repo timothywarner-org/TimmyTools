@@ -50,5 +50,6 @@ public record SettingsDataDto(
      CaretColour CaretColour,
 
      string ClassTitle,
-     string NextUp
+     string NextUp,
+     int Segment
 );
