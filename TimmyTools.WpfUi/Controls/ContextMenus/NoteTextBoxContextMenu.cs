@@ -173,7 +173,13 @@ public class NoteTextBoxContextMenu : ContextMenu
     private MenuItem BuildFontMenu()
     {
         MenuItem fontMenu = new() { Header = "Font" };
-        string[] fonts = ["Segoe UI", "Arial", "Calibri", "Consolas", "Courier New", "Times New Roman"];
+        // Family names below match exactly what is installed on Tim's machine (verified via
+        // InstalledFontCollection). WPF silently falls back to a default when a name is missing,
+        // so entries for fonts absent on a given box are harmless, just inert.
+        string[] fonts = [
+            "Segoe UI", "Arial", "Calibri", "Consolas", "Courier New", "Times New Roman",
+            "JetBrains Mono", "JetBrainsMono NF", "Operator Mono", "Poppins", "Tekton Pro"
+        ];
         foreach (string font in fonts)
         {
             fontMenu.Items.Add(new MenuItem
@@ -188,7 +194,7 @@ public class NoteTextBoxContextMenu : ContextMenu
     private MenuItem BuildSizeMenu()
     {
         MenuItem sizeMenu = new() { Header = "Size" };
-        double[] sizes = [8, 10, 12, 14, 16, 18, 20, 24, 28, 36];
+        double[] sizes = [8, 10, 12, 14, 16, 18, 20, 24, 28, 36, 48, 56, 64, 72, 84];
         foreach (double size in sizes)
         {
             sizeMenu.Items.Add(new MenuItem
