@@ -14,6 +14,42 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d">
 
+    <Window.Icon>
+        <!-- Vector clipboard mark: matches the note title-bar launcher glyph.
+             A rounded green tile with a white-stroked board + clip tab + two
+             content lines, readable against both light and dark taskbars. -->
+        <DrawingImage>
+            <DrawingImage.Drawing>
+                <DrawingGroup>
+                    <!-- Rounded accent tile -->
+                    <GeometryDrawing Brush="#2E7D32">
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="0,0,32,32" RadiusX="7" RadiusY="7"/>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <!-- Board body -->
+                    <GeometryDrawing Geometry="M 8,8 H 24 V 27 H 8 Z">
+                        <GeometryDrawing.Pen>
+                            <Pen Brush="White" Thickness="2.4" LineJoin="Round"/>
+                        </GeometryDrawing.Pen>
+                    </GeometryDrawing>
+                    <!-- Clip tab -->
+                    <GeometryDrawing Geometry="M 13,8 V 5.5 H 19 V 8">
+                        <GeometryDrawing.Pen>
+                            <Pen Brush="White" Thickness="2.4" StartLineCap="Round" EndLineCap="Round" LineJoin="Round"/>
+                        </GeometryDrawing.Pen>
+                    </GeometryDrawing>
+                    <!-- Two content lines -->
+                    <GeometryDrawing Geometry="M 12,15 H 20 M 12,20 H 20">
+                        <GeometryDrawing.Pen>
+                            <Pen Brush="White" Thickness="2" StartLineCap="Round" EndLineCap="Round"/>
+                        </GeometryDrawing.Pen>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingImage.Drawing>
+        </DrawingImage>
+    </Window.Icon>
+
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
@@ -102,36 +138,59 @@
             </TextBlock>
         </Grid>
 
-        <!-- Current clip readout banner -->
+        <!-- Always-visible current-clip panel: the clipbrd.exe-style live readout.
+             Never collapses; shows an empty state when nothing is on the clipboard.
+             Updates the instant a copy is captured, so a glance confirms the copy. -->
         <Border DockPanel.Dock="Top"
                 Background="#1F3A24"
-                BorderBrush="#3C7A4A"
-                BorderThickness="1"
-                CornerRadius="4"
-                Padding="10,8"
-                Margin="0,0,0,8"
-                Visibility="{Binding HasCurrentClip, Converter={StaticResource BoolToVis}}">
+                BorderBrush="#4FA968"
+                BorderThickness="2"
+                CornerRadius="6"
+                Padding="14,12"
+                Margin="0,0,0,10">
             <StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
-                    <!-- Clipboard glyph + text label, never colour alone -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                    <!-- Clipboard glyph + bold label, never colour alone -->
                     <TextBlock Text="&#xE16F;"
                                FontFamily="Segoe MDL2 Assets"
                                Foreground="#9FD8AC"
-                               FontSize="13"
+                               FontSize="16"
                                VerticalAlignment="Center"
-                               Margin="0,0,6,0"/>
-                    <TextBlock Text="On clipboard now"
+                               Margin="0,0,8,0"/>
+                    <TextBlock Text="ON CLIPBOARD NOW"
                                Foreground="#9FD8AC"
-                               FontSize="12"
-                               FontWeight="SemiBold"
+                               FontSize="13"
+                               FontWeight="Bold"
                                VerticalAlignment="Center"/>
                 </StackPanel>
+
+                <!-- The live clip text, large and readable -->
                 <TextBlock Text="{Binding CurrentClipPreview}"
                            Foreground="White"
-                           FontSize="13"
+                           FontSize="16"
+                           FontWeight="SemiBold"
                            TextTrimming="CharacterEllipsis"
-                           MaxHeight="40"
-                           TextWrapping="Wrap"/>
+                           MaxHeight="56"
+                           TextWrapping="Wrap"
+                           Visibility="{Binding HasCurrentClip, Converter={StaticResource BoolToVis}}"/>
+
+                <!-- Empty state -->
+                <TextBlock Text="Clipboard is empty — copy something to see it here."
+                           Foreground="#7FB58D"
+                           FontSize="14"
+                           FontStyle="Italic"
+                           TextWrapping="Wrap">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasCurrentClip}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
             </StackPanel>
         </Border>
 

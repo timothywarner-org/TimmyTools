@@ -100,30 +100,6 @@ public class ClipboardRepository(DatabaseConfiguration databaseConfiguration) : 
         return entries;
     }
 
-    // Dedupe guard for the monitor: a re-copy of the still-current clip should not
-    // spam the history. Matches against the most recent capture only, so copying
-    // text A, then B, then A again correctly records the second A.
-    public async Task<bool> IsMostRecentHash(string hash)
-    {
-        using SqliteConnection connection = new(ConnectionString);
-        connection.Open();
-
-        object? result = await ExecuteScalar(
-            connection,
-            @"
-                SELECT Hash
-                FROM ClipboardHistory
-                ORDER BY CreatedUtc DESC, Id DESC
-                LIMIT 1;
-            "
-        );
-
-        if (result is null or DBNull)
-            return false;
-
-        return string.Equals((string)result, hash, StringComparison.Ordinal);
-    }
-
     public async Task SetPinned(int id, bool pinned)
     {
         using SqliteConnection connection = new(ConnectionString);

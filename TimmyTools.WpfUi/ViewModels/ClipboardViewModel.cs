@@ -9,6 +9,7 @@ using TimmyTools.Core.DataTransferObjects;
 using TimmyTools.Core.Enums;
 using TimmyTools.Core.Repositories;
 using TimmyTools.WpfUi.Commands;
+using TimmyTools.WpfUi.Helpers;
 using TimmyTools.WpfUi.Messages;
 using TimmyTools.WpfUi.Models;
 using TimmyTools.WpfUi.Services;
@@ -101,9 +102,14 @@ public class ClipboardViewModel : INotifyPropertyChanged, IDisposable
             foreach (ClipboardEntryDto dto in entries)
                 _history.Add(new ClipboardEntryModel(dto));
 
-            ClipboardEntryModel? newest = _history.Count > 0 ? _history[0] : null;
-            if (newest is not null)
-                CurrentClipPreview = newest.Preview;
+            // Seed the live readout from the actual OS clipboard, which is the
+            // ground truth — it reflects a clip copied before Timmy Tools started or
+            // before any history exists. Fall back to the newest history row.
+            string? liveClip = ReadCurrentClipboardPreview();
+            if (!string.IsNullOrEmpty(liveClip))
+                CurrentClipPreview = liveClip;
+            else if (_history.Count > 0)
+                CurrentClipPreview = _history[0].Preview;
 
             OnPropertyChanged(nameof(IsHistoryEmpty));
             OnPropertyChanged(nameof(HasCurrentClip));
@@ -211,6 +217,24 @@ public class ClipboardViewModel : INotifyPropertyChanged, IDisposable
     private void ToggleAlwaysOnTop()
     {
         _clipboardSettings.AlwaysOnTop = !_clipboardSettings.AlwaysOnTop;
+    }
+
+    // Reads the OS clipboard's current text as a one-line preview, or null when the
+    // clipboard holds no text or is transiently locked by another process.
+    private static string? ReadCurrentClipboardPreview()
+    {
+        try
+        {
+            if (!Clipboard.ContainsText())
+                return null;
+
+            string text = Clipboard.GetText();
+            return string.IsNullOrEmpty(text) ? null : ClipboardPreview.Build(text);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private bool MatchesFilter(object item)

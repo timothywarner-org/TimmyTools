@@ -8,6 +8,7 @@ using System.Windows.Interop;
 using TimmyTools.Core.DataTransferObjects;
 using TimmyTools.Core.Enums;
 using TimmyTools.Core.Repositories;
+using TimmyTools.WpfUi.Helpers;
 using TimmyTools.WpfUi.Interop;
 using TimmyTools.WpfUi.Interop.Constants;
 using TimmyTools.WpfUi.Messages;
@@ -40,9 +41,16 @@ public class ClipboardMonitorService
     private readonly MessengerService _messengerService;
     private readonly ClipboardSettingsModel _clipboardSettings;
 
+    // Serializes overlapping WM_CLIPBOARDUPDATE captures so a rapid second copy is
+    // never dropped by an interleaved dedupe check.
+    private readonly SemaphoreSlim _captureGate = new(1, 1);
+
     private HwndSource? _hwndSource;
     private bool _isStarted;
     private bool _hotkeyRegistered;
+
+    // The hash of the most recently captured clip, for instant race-free dedupe.
+    private string? _lastCapturedHash;
 
     // Raised after a successful capture so a UI layer can surface a brief toast.
     // Carries the human-readable preview of what was captured.
@@ -199,6 +207,12 @@ public class ClipboardMonitorService
 
     private async Task CaptureCurrentClipboard()
     {
+        // Serialize captures. WM_CLIPBOARDUPDATE can fire two distinct clips in quick
+        // succession, and each capture awaits async DB calls. Without this gate the
+        // tasks interleave: two reads race the dedupe check and one distinct clip is
+        // dropped (the exact "did my copy take?" failure). The gate guarantees each
+        // capture completes read -> dedupe -> insert before the next one reads.
+        await _captureGate.WaitAsync();
         try
         {
             if (_clipboardSettings.IgnoreSensitiveClipboard && IsSensitiveClipboard())
@@ -210,15 +224,20 @@ public class ClipboardMonitorService
 
             string hash = ComputeHash(text);
 
-            // Skip a re-copy of the still-current clip so the history is not spammed.
-            if (await _clipboardRepository.IsMostRecentHash(hash))
+            // Dedupe against the last clip we captured, tracked in memory so the
+            // check is instant and cannot race a not-yet-committed insert. Only a
+            // re-copy of the still-current clip is skipped; A -> B -> A still records
+            // the second A because B reset the last-seen hash.
+            if (string.Equals(hash, _lastCapturedHash, StringComparison.Ordinal))
                 return;
+
+            _lastCapturedHash = hash;
 
             ClipboardEntryDto entry = new(
                 Id: 0,
                 Content: text,
                 ContentType: "text",
-                Preview: BuildPreview(text),
+                Preview: ClipboardPreview.Build(text),
                 CreatedUtc: DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 Pinned: false,
                 Hash: hash
@@ -239,6 +258,10 @@ public class ClipboardMonitorService
             // The clipboard is a shared OS resource; a transient failure must never
             // crash the host. Log and move on; the next change raises a fresh event.
             Debug.WriteLine($"Clipboard capture failed: {ex.Message}");
+        }
+        finally
+        {
+            _captureGate.Release();
         }
     }
 
@@ -290,19 +313,5 @@ public class ClipboardMonitorService
     {
         byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(text));
         return Convert.ToHexString(bytes);
-    }
-
-    // A single-line, length-capped preview for the history list. Collapses newlines
-    // and runs of whitespace so multi-line clips render as one tidy row.
-    private static string BuildPreview(string text)
-    {
-        const int maxPreviewLength = 120;
-
-        string collapsed = string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-
-        if (collapsed.Length <= maxPreviewLength)
-            return collapsed;
-
-        return string.Concat(collapsed.AsSpan(0, maxPreviewLength), "…");
     }
 }
