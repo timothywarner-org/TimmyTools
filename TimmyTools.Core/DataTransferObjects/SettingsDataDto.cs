@@ -51,5 +51,11 @@ public record SettingsDataDto(
 
      string ClassTitle,
      string NextUp,
-     int Segment
+     int Segment,
+
+     bool ClipboardAlwaysOnTop,
+     int ClipboardHistoryLimit,
+     bool ClipboardShowCopyNotification,
+     string ClipboardGlobalHotkey,
+     bool ClipboardIgnoreSensitiveClipboard
 );

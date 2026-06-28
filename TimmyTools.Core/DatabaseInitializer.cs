@@ -7,7 +7,7 @@ namespace TimmyTools.Core;
 
 public class DatabaseInitialiser
 {
-    public const int SchemaVersion = 8;
+    public const int SchemaVersion = 9;
 
     public static async Task Initialise(string connectionString)
     {
@@ -86,6 +86,9 @@ public class DatabaseInitialiser
 
                 CREATE TABLE IF NOT EXISTS {NoteRepository.TableName}
                     {NoteRepository.TableSchema};
+
+                CREATE TABLE IF NOT EXISTS {ClipboardRepository.TableName}
+                    {ClipboardRepository.TableSchema};
             ",
             parameters: [
                 new("@schemaVersion", SchemaVersion)
@@ -102,6 +105,7 @@ public class DatabaseInitialiser
         Schema5To6Migration schema5To6Migration = new();
         Schema6To7Migration schema6To7Migration = new();
         Schema7To8Migration schema7To8Migration = new();
+        Schema8To9Migration schema8To9Migration = new();
 
         Dictionary<int, SchemaMigration> migrations = new()
         {
@@ -111,7 +115,8 @@ public class DatabaseInitialiser
             {schema4To5Migration.TargetSchemaVersion, schema4To5Migration},
             {schema5To6Migration.TargetSchemaVersion, schema5To6Migration},
             {schema6To7Migration.TargetSchemaVersion, schema6To7Migration},
-            {schema7To8Migration.TargetSchemaVersion, schema7To8Migration}
+            {schema7To8Migration.TargetSchemaVersion, schema7To8Migration},
+            {schema8To9Migration.TargetSchemaVersion, schema8To9Migration}
         };
 
         using SqliteTransaction transaction = connection.BeginTransaction();

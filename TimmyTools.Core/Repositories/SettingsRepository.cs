@@ -81,7 +81,13 @@ public class SettingsRepository(DatabaseConfiguration databaseConfiguration) : B
 
             BreakTimer_ClassTitle               TEXT    DEFAULT '',
             BreakTimer_NextUp                   TEXT    DEFAULT '',
-            BreakTimer_Segment                  INTEGER DEFAULT 0
+            BreakTimer_Segment                  INTEGER DEFAULT 0,
+
+            Clipboard_AlwaysOnTop               INTEGER DEFAULT 0,
+            Clipboard_HistoryLimit              INTEGER DEFAULT 200,
+            Clipboard_ShowCopyNotification      INTEGER DEFAULT 1,
+            Clipboard_GlobalHotkey              TEXT    DEFAULT 'Ctrl+Alt+C',
+            Clipboard_IgnoreSensitiveClipboard  INTEGER DEFAULT 1
         )
     ";
 
@@ -153,7 +159,13 @@ public class SettingsRepository(DatabaseConfiguration databaseConfiguration) : B
 
             ClassTitle: GetString(reader, "BreakTimer_ClassTitle"),
             NextUp: GetString(reader, "BreakTimer_NextUp"),
-            Segment: GetInt(reader, "BreakTimer_Segment")
+            Segment: GetInt(reader, "BreakTimer_Segment"),
+
+            ClipboardAlwaysOnTop: GetBool(reader, "Clipboard_AlwaysOnTop"),
+            ClipboardHistoryLimit: GetInt(reader, "Clipboard_HistoryLimit"),
+            ClipboardShowCopyNotification: GetBool(reader, "Clipboard_ShowCopyNotification"),
+            ClipboardGlobalHotkey: GetString(reader, "Clipboard_GlobalHotkey"),
+            ClipboardIgnoreSensitiveClipboard: GetBool(reader, "Clipboard_IgnoreSensitiveClipboard")
         );
     }
 
@@ -214,7 +226,13 @@ public class SettingsRepository(DatabaseConfiguration databaseConfiguration) : B
 
                     BreakTimer_ClassTitle = @breakTimer_ClassTitle,
                     BreakTimer_NextUp = @breakTimer_NextUp,
-                    BreakTimer_Segment = @breakTimer_Segment
+                    BreakTimer_Segment = @breakTimer_Segment,
+
+                    Clipboard_AlwaysOnTop = @clipboard_AlwaysOnTop,
+                    Clipboard_HistoryLimit = @clipboard_HistoryLimit,
+                    Clipboard_ShowCopyNotification = @clipboard_ShowCopyNotification,
+                    Clipboard_GlobalHotkey = @clipboard_GlobalHotkey,
+                    Clipboard_IgnoreSensitiveClipboard = @clipboard_IgnoreSensitiveClipboard
                 WHERE
                     Id = @id;
             ",
@@ -266,6 +284,12 @@ public class SettingsRepository(DatabaseConfiguration databaseConfiguration) : B
                 new("@breakTimer_ClassTitle", settings.ClassTitle),
                 new("@breakTimer_NextUp", settings.NextUp),
                 new("@breakTimer_Segment", settings.Segment),
+
+                new("@clipboard_AlwaysOnTop", settings.ClipboardAlwaysOnTop),
+                new("@clipboard_HistoryLimit", settings.ClipboardHistoryLimit),
+                new("@clipboard_ShowCopyNotification", settings.ClipboardShowCopyNotification),
+                new("@clipboard_GlobalHotkey", settings.ClipboardGlobalHotkey),
+                new("@clipboard_IgnoreSensitiveClipboard", settings.ClipboardIgnoreSensitiveClipboard),
 
                 new("@id", settings.Id)
             ]
