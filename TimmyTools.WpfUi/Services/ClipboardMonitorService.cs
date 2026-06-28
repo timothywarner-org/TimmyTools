@@ -21,8 +21,7 @@ namespace TimmyTools.WpfUi.Services;
 // a visible tool window, so capture keeps working even when no tool window is
 // open. On each change it reads text, fingerprints it, dedupes against the most
 // recent capture, persists via ClipboardRepository, enforces the history cap, and
-// publishes a ClipboardActionMessage. A CaptureNotified event lets the UI raise a
-// non-intrusive on-copy toast without this service taking a dependency on any view.
+// publishes a ClipboardActionMessage(Captured) that the Clipboard window reacts to.
 public class ClipboardMonitorService
 {
     // Clipboard format names password managers and browsers set to opt a clip out
@@ -51,10 +50,6 @@ public class ClipboardMonitorService
 
     // The hash of the most recently captured clip, for instant race-free dedupe.
     private string? _lastCapturedHash;
-
-    // Raised after a successful capture so a UI layer can surface a brief toast.
-    // Carries the human-readable preview of what was captured.
-    public event Action<string>? CaptureNotified;
 
     public ClipboardMonitorService(
         ClipboardRepository clipboardRepository,
@@ -256,10 +251,10 @@ public class ClipboardMonitorService
 
             ClipboardEntryDto savedEntry = entry with { Id = newId };
 
+            // The Captured message is the single capture signal. The Clipboard window
+            // both inserts the row and (when ShowCopyNotification is on) pulses its
+            // readout panel in response; there is no separate notification channel.
             _messengerService.Publish(new ClipboardActionMessage(ClipboardAction.Captured, savedEntry));
-
-            if (_clipboardSettings.ShowCopyNotification)
-                CaptureNotified?.Invoke(savedEntry.Preview);
         }
         catch (Exception ex)
         {

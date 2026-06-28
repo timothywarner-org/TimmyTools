@@ -75,10 +75,10 @@ public partial class App : Application
             _ = Services.GetRequiredService<WindowService>();
             _notifyIconService = Services.GetRequiredService<NotifyIconService>();
 
-            // Start clipboard capture after settings load (it reads ClipboardSettings)
-            // and surface a brief on-copy toast so each capture is confirmed.
+            // Start clipboard capture after settings load (it reads ClipboardSettings).
+            // Capture confirmation is shown in-panel by the Clipboard window itself, so
+            // there is no app-level notification wiring here.
             _clipboardMonitorService = Services.GetRequiredService<ClipboardMonitorService>();
-            _clipboardMonitorService.CaptureNotified += OnClipboardCaptureNotified;
             _clipboardMonitorService.Start();
 
             MessengerService messengerService = Services.GetRequiredService<MessengerService>();
@@ -173,11 +173,7 @@ public partial class App : Application
             System.Diagnostics.Debug.WriteLine($"Failed to save notes on exit: {ex.Message}");
         }
 
-        if (_clipboardMonitorService != null)
-        {
-            _clipboardMonitorService.CaptureNotified -= OnClipboardCaptureNotified;
-            _clipboardMonitorService.Stop();
-        }
+        _clipboardMonitorService?.Stop();
 
         _databaseBackupService?.Stop();
         if (_appMetadataService != null) await _appMetadataService.Save();
@@ -189,27 +185,6 @@ public partial class App : Application
         _eventWaitHandle?.Dispose();
 
         base.OnExit(e);
-    }
-
-    private Views.ClipboardToast? _activeClipboardToast;
-
-    private void OnClipboardCaptureNotified(string preview)
-    {
-        // Marshal to the UI thread; the capture event can arrive off the window's
-        // dispatcher context. Replace any live toast so rapid copies do not stack.
-        Dispatcher.Invoke(() =>
-        {
-            _activeClipboardToast?.Close();
-
-            Views.ClipboardToast toast = new(preview);
-            toast.Closed += (s, e) =>
-            {
-                if (ReferenceEquals(_activeClipboardToast, toast))
-                    _activeClipboardToast = null;
-            };
-            _activeClipboardToast = toast;
-            toast.Show();
-        });
     }
 
     private void OnApplicationActionMessage(ApplicationActionMessage message)

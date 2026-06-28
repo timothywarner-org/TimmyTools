@@ -62,6 +62,11 @@ public class ClipboardViewModel : INotifyPropertyChanged, IDisposable
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    // Raised when a capture should visibly confirm itself in the window. The view
+    // subscribes and flashes the readout panel. Honours the ShowCopyNotification
+    // setting: off means the panel still updates, just without the pulse.
+    public event Action? CapturePulse;
+
     public ICollectionView HistoryView { get; }
 
     public string Filter
@@ -143,6 +148,11 @@ public class ClipboardViewModel : INotifyPropertyChanged, IDisposable
                     CurrentClipPreview = model.Preview;
                     OnPropertyChanged(nameof(IsHistoryEmpty));
                     OnPropertyChanged(nameof(HasCurrentClip));
+
+                    // Visible confirmation that the copy registered, shown in-panel
+                    // rather than as a floating window. Off = silent, panel still updates.
+                    if (_clipboardSettings.ShowCopyNotification)
+                        CapturePulse?.Invoke();
                     break;
 
                 case ClipboardAction.Removed:

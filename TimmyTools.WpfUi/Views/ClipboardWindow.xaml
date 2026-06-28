@@ -53,6 +53,16 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
+        <!-- In-panel capture pulse: the readout background flashes to a brighter
+             green and eases back over ~0.6s. This is the on-copy confirmation,
+             contained entirely within the window (no floating toast). -->
+        <Storyboard x:Key="CapturePulse">
+            <ColorAnimation Storyboard.TargetName="CurrentClipPanelBrush"
+                            Storyboard.TargetProperty="Color"
+                            From="#2E7D32" To="#1F3A24"
+                            Duration="0:0:0.6"/>
+        </Storyboard>
+
         <!-- Small transparent icon button (pin / delete), Segoe MDL2 glyphs -->
         <Style x:Key="RowIconButtonStyle" TargetType="Button">
             <Setter Property="Foreground" Value="#999999"/>
@@ -140,14 +150,21 @@
 
         <!-- Always-visible current-clip panel: the clipbrd.exe-style live readout.
              Never collapses; shows an empty state when nothing is on the clipboard.
-             Updates the instant a copy is captured, so a glance confirms the copy. -->
-        <Border DockPanel.Dock="Top"
-                Background="#1F3A24"
+             Updates the instant a copy is captured, so a glance confirms the copy.
+             On capture the background briefly flashes brighter (the in-panel pulse)
+             so confirmation stays inside this window and never floats onto a shared
+             screen. The Background is a named brush so the pulse storyboard can
+             animate its colour. -->
+        <Border x:Name="CurrentClipPanel"
+                DockPanel.Dock="Top"
                 BorderBrush="#4FA968"
                 BorderThickness="2"
                 CornerRadius="6"
                 Padding="14,12"
                 Margin="0,0,0,10">
+            <Border.Background>
+                <SolidColorBrush x:Name="CurrentClipPanelBrush" Color="#1F3A24"/>
+            </Border.Background>
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                     <!-- Clipboard glyph + bold label, never colour alone -->
