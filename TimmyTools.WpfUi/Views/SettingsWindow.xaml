@@ -440,6 +440,72 @@
                 </ScrollViewer>
             </TabItem>
 
+            <!-- Clipboard Tab -->
+            <TabItem Header="Clipboard">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+
+                        <GroupBox Header="Behaviour">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="auto" />
+                                    <RowDefinition Height="auto" />
+                                    <RowDefinition Height="auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Column="0" Grid.Row="0" Text="Keep window on top"/>
+                                <CheckBox Grid.Column="1" Grid.Row="0"
+                                          IsChecked="{Binding ClipboardSettings.AlwaysOnTop}" />
+
+                                <TextBlock Grid.Column="0" Grid.Row="1" Text="Show copy notification"/>
+                                <CheckBox Grid.Column="1" Grid.Row="1"
+                                          IsChecked="{Binding ClipboardSettings.ShowCopyNotification}" />
+
+                                <TextBlock Grid.Column="0" Grid.Row="2"
+                                           Text="History entries to keep"/>
+                                <TextBox Grid.Column="1" Grid.Row="2"
+                                         Width="80"
+                                         Text="{Binding ClipboardSettings.HistoryLimit, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="Shortcut">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0"
+                                           Text="Global hotkey (restart to apply)"/>
+                                <TextBox Grid.Column="1"
+                                         Width="180"
+                                         Text="{Binding ClipboardSettings.GlobalHotkey, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="Privacy">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0"
+                                           Text="Skip password-manager clips"/>
+                                <CheckBox Grid.Column="1"
+                                          IsChecked="{Binding ClipboardSettings.IgnoreSensitiveClipboard}" />
+                            </Grid>
+                        </GroupBox>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
         </TabControl>
 
     </Grid>

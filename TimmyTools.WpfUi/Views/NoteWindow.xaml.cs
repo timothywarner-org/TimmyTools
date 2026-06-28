@@ -68,6 +68,7 @@ public partial class NoteWindow : Window
         NewButton.Click += NewButton_Click;
         AtomicClockButton.Click += AtomicClockButton_Click;
         BreakTimerButton.Click += BreakTimerButton_Click;
+        ClipboardButton.Click += ClipboardButton_Click;
         MinimizeButton.Click += MinimizeButton_Click;
         CloseButton.Click += CloseButton_Click;
 
@@ -298,6 +299,11 @@ public partial class NoteWindow : Window
     private void BreakTimerButton_Click(object sender, RoutedEventArgs e)
     {
         _messengerService.Publish(new OpenBreakTimerWindowMessage());
+    }
+
+    private void ClipboardButton_Click(object sender, RoutedEventArgs e)
+    {
+        _messengerService.Publish(new OpenClipboardWindowMessage());
     }
 
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)

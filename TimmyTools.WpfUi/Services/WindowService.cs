@@ -24,6 +24,7 @@ public class WindowService
     private ManagementWindow? _managementWindow;
     private BreakTimerWindow? _breakTimerWindow;
     private AtomicClockWindow? _atomicClockWindow;
+    private ClipboardWindow? _clipboardWindow;
 
     public WindowService(
         IServiceProvider serviceProvider,
@@ -54,6 +55,8 @@ public class WindowService
         _messengerService.Subscribe<OpenBreakTimerWindowMessage>(OnOpenBreakTimerWindowMessage);
 
         _messengerService.Subscribe<OpenAtomicClockWindowMessage>(OnOpenAtomicClockWindowMessage);
+
+        _messengerService.Subscribe<OpenClipboardWindowMessage>(OnOpenClipboardWindowMessage);
     }
 
     public async Task SaveAllOpenNotes()
@@ -166,6 +169,20 @@ public class WindowService
             _atomicClockWindow.Show();
 
         _atomicClockWindow.Activate();
+    }
+
+    private void OnOpenClipboardWindowMessage(OpenClipboardWindowMessage message)
+    {
+        if (_clipboardWindow is null || !_clipboardWindow.IsLoaded)
+        {
+            _clipboardWindow = _serviceProvider.GetRequiredService<ClipboardWindow>();
+            _clipboardWindow.Closed += (s, e) => _clipboardWindow = null;
+        }
+
+        if (!_clipboardWindow.IsVisible)
+            _clipboardWindow.Show();
+
+        _clipboardWindow.Activate();
     }
 
     private async Task OpenNoteWindow(int? noteId = null, NoteModel? parentNote = null, nint? managementWindowHandle = null)

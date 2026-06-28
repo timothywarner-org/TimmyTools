@@ -81,6 +81,12 @@ public class NotifyIconService : IDisposable
         };
         managementWindowItem.Click += ManagementWindow_Click;
 
+        MenuItem clipboardItem = new()
+        {
+            Header = "Clipboard"
+        };
+        clipboardItem.Click += Clipboard_Click;
+
         MenuItem settingsItem = new()
         {
             Header = "Settings"
@@ -96,6 +102,7 @@ public class NotifyIconService : IDisposable
         ContextMenu contextMenu = new();
         contextMenu.Items.Add(newNoteItem);
         contextMenu.Items.Add(managementWindowItem);
+        contextMenu.Items.Add(clipboardItem);
         contextMenu.Items.Add(new Separator());
         contextMenu.Items.Add(settingsItem);
         contextMenu.Items.Add(new Separator());
@@ -136,6 +143,11 @@ public class NotifyIconService : IDisposable
     private void ManagementWindow_Click(object? sender, EventArgs e)
     {
         _messengerService.Publish(new OpenManagementWindowMessage());
+    }
+
+    private void Clipboard_Click(object? sender, EventArgs e)
+    {
+        _messengerService.Publish(new OpenClipboardWindowMessage());
     }
 
     private void Settings_Click(object? sender, EventArgs e)

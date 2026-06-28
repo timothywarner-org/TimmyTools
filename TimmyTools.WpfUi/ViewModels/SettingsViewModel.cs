@@ -18,6 +18,7 @@ public class SettingsViewModel : BaseViewModel
         NoteSettings = SettingsService.NoteSettings;
         EditorSettings = SettingsService.EditorSettings;
         BreakTimerSettings = SettingsService.BreakTimerSettings;
+        ClipboardSettings = SettingsService.ClipboardSettings;
 
         IsTransparencyEnabled = (NoteSettings.TransparencyMode != TransparencyMode.Disabled);
     }
@@ -26,6 +27,7 @@ public class SettingsViewModel : BaseViewModel
     public NoteSettingsModel NoteSettings { get; set; }
     public EditorSettingsModel EditorSettings { get; set; }
     public BreakTimerSettingsModel BreakTimerSettings { get; set; }
+    public ClipboardSettingsModel ClipboardSettings { get; set; }
 
     public static KeyValuePair<StartupPosition, string>[] StartupPositionsList { get; } = [
         new(StartupPosition.TopLeft, "Top left"),

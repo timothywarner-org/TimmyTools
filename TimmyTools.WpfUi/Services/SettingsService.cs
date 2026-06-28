@@ -12,6 +12,7 @@ public class SettingsService(SettingsRepository settingsRepository)
     public NoteSettingsModel NoteSettings { get; private set; } = null!;
     public EditorSettingsModel EditorSettings { get; private set; } = null!;
     public BreakTimerSettingsModel BreakTimerSettings { get; private set; } = null!;
+    public ClipboardSettingsModel ClipboardSettings { get; private set; } = null!;
 
     public async Task Load()
     {
@@ -44,6 +45,15 @@ public class SettingsService(SettingsRepository settingsRepository)
             ClassTitle = settings.ClassTitle,
             NextUp = settings.NextUp,
             Segment = settings.Segment
+        };
+
+        ClipboardSettings = new()
+        {
+            AlwaysOnTop = settings.ClipboardAlwaysOnTop,
+            HistoryLimit = settings.ClipboardHistoryLimit,
+            ShowCopyNotification = settings.ClipboardShowCopyNotification,
+            GlobalHotkey = settings.ClipboardGlobalHotkey,
+            IgnoreSensitiveClipboard = settings.ClipboardIgnoreSensitiveClipboard
         };
 
         EditorSettings = new()
@@ -130,7 +140,13 @@ public class SettingsService(SettingsRepository settingsRepository)
 
                 ClassTitle: BreakTimerSettings.ClassTitle,
                 NextUp: BreakTimerSettings.NextUp,
-                Segment: BreakTimerSettings.Segment
+                Segment: BreakTimerSettings.Segment,
+
+                ClipboardAlwaysOnTop: ClipboardSettings.AlwaysOnTop,
+                ClipboardHistoryLimit: ClipboardSettings.HistoryLimit,
+                ClipboardShowCopyNotification: ClipboardSettings.ShowCopyNotification,
+                ClipboardGlobalHotkey: ClipboardSettings.GlobalHotkey,
+                ClipboardIgnoreSensitiveClipboard: ClipboardSettings.IgnoreSensitiveClipboard
             )
         );
     }

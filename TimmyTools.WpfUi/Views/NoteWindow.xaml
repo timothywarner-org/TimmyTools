@@ -169,6 +169,40 @@
                     </Button.Template>
                 </Button>
 
+                <!-- Clipboard Button -->
+                <Button Name="ClipboardButton"
+                        Margin="6,0,0,0"
+                        ToolTip="Clipboard"
+                        Style="{StaticResource TitleBarButtonStyle}">
+                    <Button.Template>
+                        <ControlTemplate>
+                            <Canvas>
+                                <Rectangle Width="20" Height="20" Fill="Transparent" />
+                                <!-- Board body -->
+                                <Path Data="M 4,4 H 16 V 18 H 4 Z"
+                                      Stroke="{Binding Note.TitleGridButtonForeground}"
+                                      StrokeThickness="2"
+                                      StrokeLineJoin="Round"
+                                      Fill="Transparent"
+                                      d:Stroke="#464646"/>
+                                <!-- Clip tab at top -->
+                                <Path Data="M 8,4 V 2.5 H 12 V 4"
+                                      Stroke="{Binding Note.TitleGridButtonForeground}"
+                                      StrokeThickness="2"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      d:Stroke="#464646"/>
+                                <!-- Two content lines -->
+                                <Path Data="M 7,9 H 13 M 7,13 H 13"
+                                      Stroke="{Binding Note.TitleGridButtonForeground}"
+                                      StrokeThickness="1.5"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      d:Stroke="#464646"/>
+                            </Canvas>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
             </StackPanel>
 
             <!-- Title Display -->
