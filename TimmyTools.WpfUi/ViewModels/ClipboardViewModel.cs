@@ -26,6 +26,7 @@ public class ClipboardViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly ClipboardRepository _clipboardRepository;
     private readonly MessengerService _messengerService;
+    private readonly ClipboardMonitorService _clipboardMonitorService;
     private readonly ClipboardSettingsModel _clipboardSettings;
 
     private readonly ObservableCollection<ClipboardEntryModel> _history = [];
@@ -36,11 +37,13 @@ public class ClipboardViewModel : INotifyPropertyChanged, IDisposable
     public ClipboardViewModel(
         ClipboardRepository clipboardRepository,
         MessengerService messengerService,
+        ClipboardMonitorService clipboardMonitorService,
         SettingsService settingsService
     )
     {
         _clipboardRepository = clipboardRepository;
         _messengerService = messengerService;
+        _clipboardMonitorService = clipboardMonitorService;
         _clipboardSettings = settingsService.ClipboardSettings;
 
         HistoryView = CollectionViewSource.GetDefaultView(_history);
@@ -129,11 +132,24 @@ public class ClipboardViewModel : INotifyPropertyChanged, IDisposable
             switch (message.Action)
             {
                 case ClipboardAction.Captured when message.Entry is not null:
+                    // Guard against a phantom duplicate: if this id is already in the
+                    // list (e.g. this VM's own clear/reload just ran), do not insert
+                    // it twice.
+                    if (_history.Any(e => e.Id == message.Entry.Id))
+                        break;
+
                     ClipboardEntryModel model = new(message.Entry);
                     _history.Insert(0, model);
                     CurrentClipPreview = model.Preview;
                     OnPropertyChanged(nameof(IsHistoryEmpty));
                     OnPropertyChanged(nameof(HasCurrentClip));
+                    break;
+
+                case ClipboardAction.Removed:
+                    // A clear happened (possibly from another window). Reconcile this
+                    // VM's in-memory list to the database so it never shows a row that
+                    // no longer exists.
+                    _ = LoadHistory();
                     break;
             }
         });
@@ -205,8 +221,23 @@ public class ClipboardViewModel : INotifyPropertyChanged, IDisposable
                     _history.RemoveAt(i);
             }
 
+            // Re-seed the live readout from the OS clipboard. Clearing history does
+            // not change what is physically on the clipboard, so the panel must keep
+            // showing the real current clip rather than a stale preview from a row
+            // that was just deleted. If a pinned item remains it provides the
+            // fallback; otherwise the panel shows the empty state.
+            string? liveClip = ReadCurrentClipboardPreview();
+            CurrentClipPreview =
+                liveClip
+                ?? (_history.Count > 0 ? _history[0].Preview : "");
+
+            // Reset the capture dedupe guard so re-copying an item that was just
+            // cleared records it again instead of being swallowed as a duplicate.
+            _clipboardMonitorService.ResetDedupe();
+
             _messengerService.Publish(new ClipboardActionMessage(ClipboardAction.Removed, null));
             OnPropertyChanged(nameof(IsHistoryEmpty));
+            OnPropertyChanged(nameof(HasCurrentClip));
         }
         catch (Exception ex)
         {

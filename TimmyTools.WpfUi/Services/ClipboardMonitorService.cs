@@ -161,6 +161,14 @@ public class ClipboardMonitorService
         return true;
     }
 
+    // Clears the in-memory dedupe guard so the next copy is captured even if it
+    // matches the last-captured clip. Called after a history clear, so re-copying
+    // an item that was just cleared records it again instead of being swallowed.
+    public void ResetDedupe()
+    {
+        _lastCapturedHash = null;
+    }
+
     public void Stop()
     {
         if (!_isStarted)
