@@ -4,7 +4,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=flat-square&logo=windows)](https://github.com/timothywarner-org/TimmyTools)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com/)
 
-**Timmy Tools** is Tim Warner's teaching sidecar app -- a Windows desktop utility designed to run alongside his technical training courses. It combines persistent rich-text sticky notes, an NTP-synced analog/digital atomic clock, and a configurable break timer with class tracking -- all accessible from one system tray icon.
+**Timmy Tools** is Tim Warner's teaching sidecar app -- a Windows desktop utility designed to run alongside his technical training courses. It combines persistent rich-text sticky notes, an NTP-synced analog/digital atomic clock, a configurable break timer with class tracking, and a live clipboard manager -- all accessible from one system tray icon.
 
 <p align="center">
   <img src="images/timmytools.png" alt="Timmy Tools in action -- sticky notes, atomic clock, and break timer" width="700" />
@@ -49,13 +49,14 @@ dotnet run --project TimmyTools.WpfUi
 
 ## Tools Overview
 
-Timmy Tools includes three integrated utilities, all accessible from the system tray or directly from a note's title bar:
+Timmy Tools includes four integrated utilities, all accessible from the system tray or directly from a note's title bar:
 
 | Tool | Description |
 |------|-------------|
 | **Sticky Notes** | Rich-text notes with auto-save, color themes, dark mode, transparency, window shade, auto-resize, and a full formatting context menu. Stack as ordinary windows — click another app and the note steps aside |
 | **Atomic Clock** | NTP-synced analog and digital clock display with sync status indicator |
 | **Break Timer** | Countdown timer with presets (5/10/30/45 min), custom durations (default 10), class title, and segment/topic tracking fields |
+| **Clipboard** | Live clipboard viewer with on-copy confirmation, searchable history, click-to-restore, pinning, an explicit keep-on-top toggle, and a global hotkey (default Ctrl+Alt+C) |
 
 ---
 
@@ -83,7 +84,11 @@ Click the clock icon on any note's title bar. The window shows an analog clock f
 
 Click the timer icon on any note's title bar. Choose a preset duration or enter a custom time. Use the gear popup's **Class**, **Segment**, and **Topic** fields to display what you're teaching and what's coming after the break; the footer composes them as `Next Up | Segment X | Topic`. The window turns green when the break is over.
 
-### 5. Manage all notes
+### 5. Open the clipboard
+
+Click the clipboard icon on any note's title bar, pick **Clipboard** from the tray, or press the global hotkey (**Ctrl+Alt+C** by default). The top banner shows what is on the clipboard right now, and every copy raises a brief on-copy toast so you always know the copy registered. Search past clips, click one to put it back on the clipboard, pin the ones you want to keep, and use **Clear all** to wipe the rest. Park the window on a second monitor and turn on **Keep on top** to keep it in view.
+
+### 6. Manage all notes
 
 Left-click the system tray icon to open the **Management Window**, which shows a grid of all saved notes with color-coded previews. Open, close, or delete notes in bulk from here.
 
@@ -312,11 +317,12 @@ TimmyTools/
 │   │   ├── NoteDto.cs                  #   Note data record (immutable)
 │   │   ├── SettingsDataDto.cs          #   Settings data record (immutable)
 │   │   └── AppMetadataDataDto.cs       #   App metadata record (immutable)
-│   ├── Enums/                          #   Shared enumerations (14 enum files)
-│   ├── Migrations/                     #   Sequential schema migrations (v1→v8)
+│   ├── Enums/                          #   Shared enumerations
+│   ├── Migrations/                     #   Sequential schema migrations (v1→v9)
 │   └── Repositories/
 │       ├── _BaseRepository.cs          #   Shared SQLite helpers
 │       ├── NoteRepository.cs           #   CRUD for notes
+│       ├── ClipboardRepository.cs      #   CRUD for clipboard history
 │       ├── SettingsRepository.cs       #   CRUD for settings
 │       └── AppMetadataRepository.cs    #   CRUD for app metadata
 │
@@ -530,6 +536,7 @@ Timmy Tools builds on the work of several projects and inspirations:
 - **[PinnyNotes](https://github.com/63BeetleSmurf/PinnyNotes)** by 63BeetleSmurf -- The original sticky notes application that Timmy Tools was forked from. PinnyNotes provided the core note management, text transformation tools, and MVVM architecture that form the foundation of this project.
 - **Atomic Clock** -- The NTP-synced clock window was inspired by the need to display precise, server-synchronized time during live training sessions.
 - **Break Timer** -- The break timer concept draws from classic egg timer utilities, adapted here as a training break countdown with class tracking for pacing course sessions.
+- **[CopyQ](https://github.com/hluk/CopyQ)** by Lukas Holecek -- Design inspiration for the Clipboard tool. Timmy Tools' clipboard manager is an original C# reimplementation of the concept; no CopyQ source code is used or ported (CopyQ is GPL v3, Timmy Tools is GPL v2, so keeping it a clean reimplementation avoids any license conflict).
 
 ---
 

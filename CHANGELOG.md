@@ -4,6 +4,8 @@
 ## Unreleased
 
 ### Added
+- Clipboard tool, the fourth Timmy Tools utility: a live clipboard viewer with on-copy confirmation toast, searchable history, click-to-restore, pinning, an explicit keep-on-top toggle, a global hotkey (default Ctrl+Alt+C), and per-entry / clear-all delete. Launchable from the tray, a note title-bar button, and the hotkey.
+- Clipboard settings (keep-on-top, history limit, copy notification, global hotkey, skip password-manager clips) in the Settings window.
 - Break Timer quick-edit popup (gear icon) with Class, Segment and Topic fields.
 - Break Timer footer now shows "Next Up | Segment X | Topic" (empty parts omitted).
 - Additional context menu fonts, JetBrains Mono, JetBrainsMono NF, Operator Mono, Poppins and Tekton Pro.
@@ -11,6 +13,7 @@
 
 ### Changed
 - Break Timer default custom duration changed from 5 to 10 minutes.
+- Database migration to schema v9, adds the ClipboardHistory table and Clipboard_* settings columns.
 - Database migration to schema v8, adds BreakTimer_Segment column.
 
 
