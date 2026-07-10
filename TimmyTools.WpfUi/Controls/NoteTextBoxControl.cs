@@ -12,6 +12,7 @@ using System.Windows.Navigation;
 using TimmyTools.Core.Enums;
 using TimmyTools.WpfUi.Commands;
 using TimmyTools.WpfUi.Controls.ContextMenus;
+using TimmyTools.WpfUi.Helpers;
 
 namespace TimmyTools.WpfUi.Controls;
 
@@ -42,6 +43,7 @@ public partial class NoteTextBoxControl : RichTextBox
         PreviewDrop += OnPreviewDrop;
         MouseDoubleClick += OnMouseDoubleClick;
         MouseUp += OnMouseUp;
+        PreviewMouseLeftButtonDown += OnPreviewMouseLeftButtonDown;
         PreviewKeyDown += OnPreviewKeyDown;
         ContextMenuOpening += OnContextMenuOpening;
 
@@ -66,6 +68,7 @@ public partial class NoteTextBoxControl : RichTextBox
         InputBindings.Add(new InputBinding(new RelayCommand(ToggleBold), new KeyGesture(Key.B, ModifierKeys.Control)));
         InputBindings.Add(new InputBinding(new RelayCommand(ToggleItalic), new KeyGesture(Key.I, ModifierKeys.Control)));
         InputBindings.Add(new InputBinding(new RelayCommand(ToggleUnderline), new KeyGesture(Key.U, ModifierKeys.Control)));
+        InputBindings.Add(new InputBinding(new RelayCommand(ToggleChecklistItemAtCaret), new KeyGesture(Key.K, ModifierKeys.Control)));
 
         // Override built-in bold/italic/underline commands to use our handlers
         CommandBindings.Add(new CommandBinding(EditingCommands.ToggleBold, (s, e) => ToggleBold()));
@@ -597,6 +600,242 @@ public partial class NoteTextBoxControl : RichTextBox
         }
     }
 
+    /// <summary>
+    /// Converts every paragraph touched by the selection into a checklist item, or back
+    /// into a plain paragraph when they are already checklist items. Mirrors the toggle
+    /// behaviour of the bullet/numbered list menu entries.
+    /// </summary>
+    public void ApplyChecklist()
+    {
+        List<Paragraph> paragraphs = GetSelectedParagraphs();
+        if (paragraphs.Count == 0)
+            return;
+
+        // Toggle semantics: if every touched line is already a checklist item, strip them.
+        bool removing = paragraphs.All(ChecklistHelper.IsChecklistItem);
+
+        // One undo unit for the whole gesture. This also coalesces TextChanged, so the note is
+        // re-serialized to RTF once instead of once per line edit.
+        BeginChange();
+        try
+        {
+            foreach (Paragraph paragraph in paragraphs)
+            {
+                if (removing)
+                    RemoveChecklistItem(paragraph);
+                else if (!ChecklistHelper.IsChecklistItem(paragraph))
+                    MakeChecklistItem(paragraph);
+            }
+        }
+        finally
+        {
+            EndChange();
+        }
+    }
+
+    /// <summary>
+    /// Checks or unchecks the line under the caret (Ctrl+K, and the "Toggle check" menu entry).
+    /// A line that is not yet a checklist item becomes one and is checked in a single step, so the
+    /// shortcut always does something visible rather than silently ignoring the keypress.
+    /// </summary>
+    public void ToggleChecklistItemAtCaret()
+    {
+        if (IsReadOnly || CaretPosition.Paragraph is not Paragraph paragraph)
+            return;
+
+        if (ChecklistHelper.IsChecklistItem(paragraph))
+        {
+            ToggleChecklistItem(paragraph);
+            return;
+        }
+
+        // Blank lines have nothing to check off; converting one would leave a stray empty item.
+        if (new TextRange(paragraph.ContentStart, paragraph.ContentEnd).IsEmpty)
+            return;
+
+        // Convert and check as one gesture. Change blocks are reference-counted, so nesting the
+        // inner block opened by ToggleChecklistItem keeps this a single undo unit.
+        BeginChange();
+        try
+        {
+            MakeChecklistItem(paragraph);
+            ToggleChecklistItem(paragraph);
+        }
+        finally
+        {
+            EndChange();
+        }
+    }
+
+    /// <summary>
+    /// Flips a checklist item between checked and unchecked, swapping the glyph and
+    /// applying or removing the struck-and-dimmed appearance.
+    /// </summary>
+    private void ToggleChecklistItem(Paragraph paragraph)
+    {
+        TextPointer? glyphStart = ChecklistHelper.FindGlyphPosition(paragraph);
+        if (glyphStart is null)
+            return;
+
+        int glyphLength = ChecklistHelper.GlyphLength(glyphStart);
+        TextPointer? glyphEnd = glyphStart.GetPositionAtOffset(glyphLength, LogicalDirection.Forward);
+        if (glyphEnd is null)
+            return;
+
+        char currentGlyph = ChecklistHelper.IsChecked(paragraph)
+            ? ChecklistHelper.CheckedGlyph
+            : ChecklistHelper.UncheckedGlyph;
+        char nextGlyph = ChecklistHelper.Toggle(currentGlyph);
+
+        // One undo unit: a single click or Ctrl+K must reverse in a single Ctrl+Z, never leaving
+        // the glyph swapped but the strikethrough half-applied.
+        BeginChange();
+        try
+        {
+            // Replace just the glyph. Assigning TextRange.Text collapses the range's runs, so the
+            // surrounding item text is untouched.
+            new TextRange(glyphStart, glyphEnd).Text = ChecklistHelper.GlyphText(nextGlyph);
+
+            ChecklistHelper.ApplyCheckedAppearance(paragraph, nextGlyph == ChecklistHelper.CheckedGlyph);
+        }
+        finally
+        {
+            EndChange();
+        }
+    }
+
+    /// <summary>Prefixes a paragraph with the unchecked glyph, leaving its text formatting alone.</summary>
+    private static void MakeChecklistItem(Paragraph paragraph)
+    {
+        paragraph.ContentStart.InsertTextInRun(ChecklistHelper.UncheckedPrefix);
+        ChecklistHelper.ApplyCheckedAppearance(paragraph, isChecked: false);
+    }
+
+    /// <summary>Strips the leading glyph and separator, and clears any checked appearance.</summary>
+    private static void RemoveChecklistItem(Paragraph paragraph)
+    {
+        TextPointer? glyphStart = ChecklistHelper.FindGlyphPosition(paragraph);
+        if (glyphStart is null)
+            return;
+
+        // Clear the struck/dimmed look before removing the glyph, while the paragraph
+        // still reports as a checklist item.
+        ChecklistHelper.ApplyCheckedAppearance(paragraph, isChecked: false);
+
+        // Re-find: ApplyCheckedAppearance can re-split runs and invalidate the pointer.
+        glyphStart = ChecklistHelper.FindGlyphPosition(paragraph);
+        if (glyphStart is null)
+            return;
+
+        int removeLength = ChecklistHelper.GlyphLength(glyphStart);
+
+        // Swallow one following separator space so the text does not keep a stray indent.
+        TextPointer? afterGlyph = glyphStart.GetPositionAtOffset(removeLength, LogicalDirection.Forward);
+        if (afterGlyph is not null)
+        {
+            string following = afterGlyph.GetTextInRun(LogicalDirection.Forward);
+            if (following.Length > 0 && following[0] == ChecklistHelper.GlyphSeparator)
+                removeLength++;
+        }
+
+        TextPointer? removeEnd = glyphStart.GetPositionAtOffset(removeLength, LogicalDirection.Forward);
+        if (removeEnd is not null)
+            new TextRange(glyphStart, removeEnd).Text = string.Empty;
+    }
+
+    /// <summary>
+    /// Every paragraph the selection touches, in document order, including paragraphs nested
+    /// inside ListItems. An empty selection yields the single paragraph under the caret.
+    /// </summary>
+    private List<Paragraph> GetSelectedParagraphs()
+    {
+        TextPointer start = Selection.Start;
+        TextPointer end = Selection.IsEmpty ? Selection.Start : Selection.End;
+
+        Paragraph? startParagraph = start.Paragraph;
+        Paragraph? endParagraph = end.Paragraph ?? startParagraph;
+
+        if (startParagraph is null)
+            return [];
+
+        // Walk top-level blocks rather than paragraph-to-paragraph. A selection can span loose
+        // paragraphs and Lists in any order, and a Paragraph's NextBlock never crosses out of the
+        // ListItem that contains it, so a paragraph-typed walk stops at the first List it meets.
+        Block? startBlock = TopLevelBlockOf(startParagraph);
+        Block? endBlock = TopLevelBlockOf(endParagraph);
+
+        List<Paragraph> paragraphs = [];
+        bool started = false;
+        bool finished = false;
+
+        Block? block = startBlock;
+        while (block is not null && !finished)
+        {
+            CollectParagraphs(block, startParagraph, endParagraph, paragraphs, ref started, ref finished);
+            if (block == endBlock)
+                break;
+            block = block.NextBlock;
+        }
+
+        return paragraphs;
+    }
+
+    /// <summary>The document-level block containing <paramref name="element"/>.</summary>
+    private Block? TopLevelBlockOf(TextElement? element)
+    {
+        DependencyObject? current = element;
+        while (current is TextElement textElement)
+        {
+            if (textElement is Block candidate && ReferenceEquals(textElement.Parent, Document))
+                return candidate;
+            current = textElement.Parent;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Depth-first collection of the paragraphs between <paramref name="startParagraph"/> and
+    /// <paramref name="endParagraph"/> inclusive, descending into Lists so nested items are found.
+    /// </summary>
+    private static void CollectParagraphs(
+        Block block,
+        Paragraph startParagraph,
+        Paragraph endParagraph,
+        List<Paragraph> paragraphs,
+        ref bool started,
+        ref bool finished)
+    {
+        if (finished)
+            return;
+
+        if (block is Paragraph paragraph)
+        {
+            if (!started && paragraph == startParagraph)
+                started = true;
+
+            if (started)
+            {
+                paragraphs.Add(paragraph);
+                if (paragraph == endParagraph)
+                    finished = true;
+            }
+            return;
+        }
+
+        if (block is List list)
+        {
+            foreach (ListItem item in list.ListItems)
+            {
+                foreach (Block childBlock in item.Blocks)
+                {
+                    CollectParagraphs(childBlock, startParagraph, endParagraph, paragraphs, ref started, ref finished);
+                    if (finished)
+                        return;
+                }
+            }
+        }
+    }
+
     public void ApplyTabSpacing(double spacing)
     {
         if (spacing <= 0)
@@ -940,11 +1179,56 @@ public partial class NoteTextBoxControl : RichTextBox
             Paste();
     }
 
+    /// <summary>
+    /// Toggles a checklist item when the click lands on its ballot-box glyph. Clicks anywhere
+    /// else on the line fall through so the caret can be placed and the text edited normally.
+    /// Checked items stay in the note; only their appearance changes.
+    /// </summary>
+    private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (IsReadOnly)
+            return;
+
+        // Let modified clicks through: Shift extends a selection onto this line, and Ctrl+click
+        // is a selection gesture too. Swallowing them would make a checklist line unselectable.
+        if (Keyboard.Modifiers != ModifierKeys.None)
+            return;
+
+        // A double-click is a word-select gesture. Without this the first click of the pair
+        // toggles, the second toggles back, and the selection never happens.
+        if (e.ClickCount != 1)
+            return;
+
+        // snapToText:false so a click in the margin or past the end of a line returns null
+        // instead of snapping onto the nearest character, which would toggle by accident.
+        TextPointer? clickPosition = GetPositionFromPoint(e.GetPosition(this), snapToText: false);
+        if (clickPosition?.Paragraph is not Paragraph paragraph)
+            return;
+
+        TextPointer? glyphStart = ChecklistHelper.FindGlyphPosition(paragraph);
+        if (glyphStart is null)
+            return;
+
+        // Only the glyph's own characters are a hit target.
+        int offsetFromGlyph = glyphStart.GetOffsetToPosition(clickPosition);
+        if (offsetFromGlyph < 0 || offsetFromGlyph >= ChecklistHelper.GlyphLength(glyphStart))
+            return;
+
+        ToggleChecklistItem(paragraph);
+
+        // Swallow the click so the caret does not land inside the glyph we just replaced.
+        e.Handled = true;
+    }
+
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Tab)
         {
             e.Handled = HandleTabPressed();
+        }
+        else if (e.Key == Key.Return && !IsReadOnly && HandleReturnOnChecklistItem())
+        {
+            e.Handled = true;
         }
         else if (e.Key == Key.Return && AutoIndent)
         {
@@ -966,6 +1250,73 @@ public partial class NoteTextBoxControl : RichTextBox
     private void OnContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
         _contextMenu.Update();
+    }
+
+    /// <summary>
+    /// Continues a checklist when Return is pressed on one of its items. Returns true when the
+    /// key was consumed.
+    ///
+    /// Pressing Return on an item starts a fresh unchecked item. The new item always begins with
+    /// default formatting, so the struck, dimmed appearance of a completed task never bleeds onto
+    /// the next one. Pressing Return on an item that has no text ends the checklist instead, which
+    /// is how the list is exited without reaching for the menu.
+    /// </summary>
+    private bool HandleReturnOnChecklistItem()
+    {
+        if (HasSelectedText)
+            return false;
+
+        if (CaretPosition.Paragraph is not Paragraph paragraph || !ChecklistHelper.IsChecklistItem(paragraph))
+            return false;
+
+        // An item whose only content is the glyph and its separator is "empty". Pressing Return on
+        // it exits the checklist: strip the glyph, then fall through (return false) so the keypress
+        // still produces the new line the user asked for.
+        if (IsChecklistItemEmpty(paragraph))
+        {
+            BeginChange();
+            try
+            {
+                RemoveChecklistItem(paragraph);
+            }
+            finally
+            {
+                EndChange();
+            }
+            return false;
+        }
+
+        EditingCommands.EnterParagraphBreak.Execute(null, this);
+
+        if (CaretPosition.Paragraph is not Paragraph newParagraph)
+            return true;
+
+        // The break inherits the previous line's character formatting. Clear it before inserting
+        // the glyph so a completed task does not hand its strikethrough to the new item.
+        ChecklistHelper.ApplyCheckedAppearance(newParagraph, isChecked: false);
+        newParagraph.ContentStart.InsertTextInRun(ChecklistHelper.UncheckedPrefix);
+        ChecklistHelper.ApplyCheckedAppearance(newParagraph, isChecked: false);
+
+        // Park the caret after the glyph and its separator, ready to type.
+        TextPointer? glyphStart = ChecklistHelper.FindGlyphPosition(newParagraph);
+        if (glyphStart is not null)
+        {
+            int skip = ChecklistHelper.GlyphLength(glyphStart) + 1; // glyph + separator
+            CaretPosition = glyphStart.GetPositionAtOffset(skip, LogicalDirection.Forward) ?? CaretPosition;
+        }
+
+        return true;
+    }
+
+    /// <summary>True when a checklist item carries no text beyond its glyph and separator.</summary>
+    private static bool IsChecklistItemEmpty(Paragraph paragraph)
+    {
+        string text = new TextRange(paragraph.ContentStart, paragraph.ContentEnd).Text;
+        string withoutGlyph = text
+            .Replace(ChecklistHelper.CheckedGlyph.ToString(), string.Empty)
+            .Replace(ChecklistHelper.UncheckedGlyph.ToString(), string.Empty)
+            .Replace(ChecklistHelper.TextPresentationSelector.ToString(), string.Empty);
+        return string.IsNullOrWhiteSpace(withoutGlyph);
     }
 
     #endregion

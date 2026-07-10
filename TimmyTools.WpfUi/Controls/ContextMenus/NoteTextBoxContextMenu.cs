@@ -397,6 +397,19 @@ public class NoteTextBoxContextMenu : ContextMenu
             Header = "Lettered",
             Command = new RelayCommand(() => _noteTextBox.ApplyList(TextMarkerStyle.LowerLatin))
         });
+        // Converts the selected lines to/from checklist items. Checking an item off is a
+        // separate action: click its box, or press Ctrl+K on the line.
+        paragraphMenu.Items.Add(new MenuItem
+        {
+            Header = "Checklist",
+            Command = new RelayCommand(_noteTextBox.ApplyChecklist)
+        });
+        paragraphMenu.Items.Add(new MenuItem
+        {
+            Header = "Toggle check",
+            InputGestureText = "Ctrl+K",
+            Command = new RelayCommand(_noteTextBox.ToggleChecklistItemAtCaret)
+        });
 
         paragraphMenu.Items.Add(new Separator());
 

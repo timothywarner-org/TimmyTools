@@ -58,6 +58,18 @@ Four observable model objects — `ApplicationSettingsModel`, `NoteSettingsModel
 
 The right-click menu inside a note is built procedurally in `Controls/ContextMenus/NoteTextBoxContextMenu.cs` — a single class that wires up Undo/Redo, clipboard ops, Font/Size/Style/Case/Color/Paragraph submenus, counts, and Locked toggle. There is **no `Tools/` folder and no `BaseTool` hierarchy** (an older design that has since been collapsed). To add a new submenu item, edit `NoteTextBoxContextMenu` directly — wire up a `MenuItem`, add it to the appropriate parent in the constructor, and bind it to a `RelayCommand` or a built-in `ApplicationCommands.*` target.
 
+### Checklists
+
+Paragraph → **Checklist** converts the selected lines into checklist items; clicking an item's box, pressing **Ctrl+K**, or Paragraph → **Toggle check** checks it off. A checked item is struck through and dimmed to grey (`#8A8A8A`) but **never deleted**. Enter on an item starts a fresh unchecked item with clean formatting; Enter on an empty item leaves the checklist. Logic is split between `Helpers/ChecklistHelper.cs` (glyph vocabulary, appearance) and the checklist methods on `NoteTextBoxControl`.
+
+Three constraints, each learned the hard way. Do not undo them without re-running the spike:
+
+- **A real WPF `CheckBox` cannot be used.** Notes persist as RTF, and RTF has no representation for a `UIElement`, so an `InlineUIContainer` is silently dropped on the next auto-save. Checklist items are therefore ballot-box **glyph characters** — `☐` (U+2610) and `☑` (U+2611) plus U+FE0E to force monochrome (not emoji) presentation, pinned to `Segoe UI Symbol` because neither Segoe UI nor the default note font contains those code points.
+- **The glyph character is the only source of truth for checked state**, never the formatting. After an RTF reload, `TextRange.GetPropertyValue(Inline.TextDecorationsProperty)` returns an *empty* collection even though the text visibly renders struck, because the RTF reader restores decorations onto a wrapping `Span` rather than the inner `Run`. (The same quirk means `ToggleUnderline` misreports on a reloaded note — a pre-existing latent bug, unrelated to checklists.)
+- **`TextDecorations` and `Foreground` inherit.** `ApplyPropertyValue(prop, null)` only removes a *local* value, so it cannot override the `Span` the RTF reader creates. Applying the checked look therefore styles only the text *after* the glyph (so the strike never crosses the box), and removing it walks the inline subtree calling `ClearValue` (so a reloaded item actually un-strikes). To override an inherited decoration, apply an **empty `TextDecorationCollection()`**, never `null`.
+
+Each user-facing gesture is wrapped in `BeginChange()`/`EndChange()` on the `RichTextBox` (not the `FlowDocument`) so one click is one undo step, which also collapses the per-edit RTF re-serialization.
+
 ### Service registration (`App.xaml.cs::ConfigureServices`)
 
 - **Singletons:** `DatabaseConfiguration`, `SettingsRepository`, `AppMetadataRepository`, `NoteRepository`, `AppMetadataService`, `SettingsService`, `MessengerService`, `WindowService`, `ThemeService`, `DatabaseBackupService`, `NtpService`
