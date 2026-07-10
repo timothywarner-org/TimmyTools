@@ -704,11 +704,19 @@ public partial class NoteTextBoxControl : RichTextBox
         }
     }
 
-    /// <summary>Prefixes a paragraph with the unchecked glyph, leaving its text formatting alone.</summary>
+    /// <summary>
+    /// Prefixes a paragraph with the unchecked glyph, leaving its text formatting alone.
+    ///
+    /// Deliberately calls PinGlyphFont rather than ApplyCheckedAppearance(false). The latter also
+    /// runs ClearInherited over Foreground and TextDecorations across every inline, which strips the
+    /// author's own colour and underline from a line that was never checked in the first place.
+    /// Converting a line to a checklist item must only add a box; it must inherit the line's font,
+    /// size, weight and colour untouched.
+    /// </summary>
     private static void MakeChecklistItem(Paragraph paragraph)
     {
         paragraph.ContentStart.InsertTextInRun(ChecklistHelper.UncheckedPrefix);
-        ChecklistHelper.ApplyCheckedAppearance(paragraph, isChecked: false);
+        ChecklistHelper.PinGlyphFont(paragraph);
     }
 
     /// <summary>Strips the leading glyph and separator, and clears any checked appearance.</summary>
@@ -1286,16 +1294,24 @@ public partial class NoteTextBoxControl : RichTextBox
             return false;
         }
 
+        // Whether the line we are splitting was checked decides how much formatting the new item may
+        // inherit. Read it before the break, while `paragraph` is still the source item.
+        bool splittingCheckedItem = ChecklistHelper.IsChecked(paragraph);
+
         EditingCommands.EnterParagraphBreak.Execute(null, this);
 
         if (CaretPosition.Paragraph is not Paragraph newParagraph)
             return true;
 
-        // The break inherits the previous line's character formatting. Clear it before inserting
-        // the glyph so a completed task does not hand its strikethrough to the new item.
-        ChecklistHelper.ApplyCheckedAppearance(newParagraph, isChecked: false);
+        // The break inherits the previous line's character formatting. Strip the struck/dimmed look
+        // only when the source item was checked, so a completed task does not hand its strikethrough
+        // and grey to the new item. Clearing unconditionally would also discard the author's own
+        // colour and underline on an ordinary unchecked line.
+        if (splittingCheckedItem)
+            ChecklistHelper.ApplyCheckedAppearance(newParagraph, isChecked: false);
+
         newParagraph.ContentStart.InsertTextInRun(ChecklistHelper.UncheckedPrefix);
-        ChecklistHelper.ApplyCheckedAppearance(newParagraph, isChecked: false);
+        ChecklistHelper.PinGlyphFont(newParagraph);
 
         // Park the caret after the glyph and its separator, ready to type.
         TextPointer? glyphStart = ChecklistHelper.FindGlyphPosition(newParagraph);

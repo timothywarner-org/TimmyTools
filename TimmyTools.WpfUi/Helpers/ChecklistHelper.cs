@@ -213,6 +213,13 @@ internal static class ChecklistHelper
     /// formatting the first inline carries, so a 48pt bold heading would otherwise produce a giant
     /// bold box. The strike is cleared separately because a checked item strikes the whole
     /// paragraph, and the line must not be drawn through the box itself.
+    ///
+    /// The separator space is pinned to the SAME font as the glyph, which is what keeps every item's
+    /// text starting at the same x-offset. The box is a fixed 12.06px in Segoe UI Symbol at 14pt, but
+    /// the separator would otherwise inherit the line's font, and a space is 8.203px in Cascadia Mono
+    /// versus 3.377px in Georgia. Letting it inherit makes the indent vary by ~4.8px from line to
+    /// line, which is exactly the ragged-left-edge bug. Pinning both gives a flat 15.893px for every
+    /// item regardless of the line's font, checked or unchecked.
     /// </summary>
     public static void PinGlyphFont(Paragraph paragraph)
     {
@@ -222,8 +229,20 @@ internal static class ChecklistHelper
             return;
         }
 
-        // Span the glyph plus any trailing variation selector.
-        TextPointer? glyphEnd = glyphStart.GetPositionAtOffset(GlyphLength(glyphStart), LogicalDirection.Forward);
+        // Span the glyph plus any trailing variation selector, then extend over the separator space
+        // so the whole prefix renders in one metrically-stable font.
+        int prefixLength = GlyphLength(glyphStart);
+        TextPointer? afterGlyph = glyphStart.GetPositionAtOffset(prefixLength, LogicalDirection.Forward);
+        if (afterGlyph is not null)
+        {
+            string following = afterGlyph.GetTextInRun(LogicalDirection.Forward);
+            if (following.Length > 0 && following[0] == GlyphSeparator)
+            {
+                prefixLength++;
+            }
+        }
+
+        TextPointer? glyphEnd = glyphStart.GetPositionAtOffset(prefixLength, LogicalDirection.Forward);
         if (glyphEnd is null)
         {
             return;

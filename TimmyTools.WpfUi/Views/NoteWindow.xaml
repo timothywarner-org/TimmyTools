@@ -135,40 +135,6 @@
                     </Button.Template>
                 </Button>
 
-                <!-- Break Timer Button -->
-                <Button Name="BreakTimerButton"
-                        Margin="6,0,0,0"
-                        ToolTip="Break Timer"
-                        Style="{StaticResource TitleBarButtonStyle}">
-                    <Button.Template>
-                        <ControlTemplate>
-                            <Canvas>
-                                <Rectangle Width="20" Height="20" Fill="Transparent" />
-                                <!-- Cup body (U shape) -->
-                                <Path Data="M 3,7 V 17 H 12 V 7"
-                                      Stroke="{Binding Note.TitleGridButtonForeground}"
-                                      StrokeThickness="2"
-                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                      StrokeLineJoin="Round"
-                                      d:Stroke="#464646"/>
-                                <!-- Handle -->
-                                <Path Data="M 12,9 C 16,9 16,14 12,14"
-                                      Stroke="{Binding Note.TitleGridButtonForeground}"
-                                      StrokeThickness="2"
-                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                      Fill="Transparent"
-                                      d:Stroke="#464646"/>
-                                <!-- Steam wisps -->
-                                <Path Data="M 6,2 Q 7,4 6,5 M 9,2 Q 10,4 9,5"
-                                      Stroke="{Binding Note.TitleGridButtonForeground}"
-                                      StrokeThickness="1.5"
-                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                      d:Stroke="#464646"/>
-                            </Canvas>
-                        </ControlTemplate>
-                    </Button.Template>
-                </Button>
-
                 <!-- Clipboard Button -->
                 <Button Name="ClipboardButton"
                         Margin="6,0,0,0"
@@ -194,6 +160,42 @@
                                       d:Stroke="#464646"/>
                                 <!-- Two content lines -->
                                 <Path Data="M 7,9 H 13 M 7,13 H 13"
+                                      Stroke="{Binding Note.TitleGridButtonForeground}"
+                                      StrokeThickness="1.5"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      d:Stroke="#464646"/>
+                            </Canvas>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Break Timer Button. Deliberately last in the tool group: it is the control Tim
+                     reaches for most during a live class, so it sits at the group's edge where the
+                     pointer lands without fine aiming. Don't reorder without asking. -->
+                <Button Name="BreakTimerButton"
+                        Margin="6,0,0,0"
+                        ToolTip="Break Timer"
+                        Style="{StaticResource TitleBarButtonStyle}">
+                    <Button.Template>
+                        <ControlTemplate>
+                            <Canvas>
+                                <Rectangle Width="20" Height="20" Fill="Transparent" />
+                                <!-- Cup body (U shape) -->
+                                <Path Data="M 3,7 V 17 H 12 V 7"
+                                      Stroke="{Binding Note.TitleGridButtonForeground}"
+                                      StrokeThickness="2"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      d:Stroke="#464646"/>
+                                <!-- Handle -->
+                                <Path Data="M 12,9 C 16,9 16,14 12,14"
+                                      Stroke="{Binding Note.TitleGridButtonForeground}"
+                                      StrokeThickness="2"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      Fill="Transparent"
+                                      d:Stroke="#464646"/>
+                                <!-- Steam wisps -->
+                                <Path Data="M 6,2 Q 7,4 6,5 M 9,2 Q 10,4 9,5"
                                       Stroke="{Binding Note.TitleGridButtonForeground}"
                                       StrokeThickness="1.5"
                                       StrokeStartLineCap="Round" StrokeEndLineCap="Round"
