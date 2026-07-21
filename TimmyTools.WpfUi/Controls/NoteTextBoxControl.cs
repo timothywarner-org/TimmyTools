@@ -374,6 +374,12 @@ public partial class NoteTextBoxControl : RichTextBox
             {
                 using MemoryStream stream = new(Encoding.UTF8.GetBytes(rtf));
                 range.Load(stream, DataFormats.Rtf);
+
+                // Idempotent repair pass: re-pin glyph font and size on every checklist item so
+                // notes saved before the line-box normalisation stop rendering inflated lines.
+                // Runs inside the _isUpdatingRtfContent guard, so it cannot echo back into
+                // RtfContent mid-load.
+                ChecklistHelper.NormaliseDocument(Document);
             }
             else
             {

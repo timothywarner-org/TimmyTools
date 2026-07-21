@@ -221,7 +221,7 @@ public class ClipboardMonitorService
             if (_clipboardSettings.IgnoreSensitiveClipboard && IsSensitiveClipboard())
                 return;
 
-            string? text = ReadClipboardTextWithRetry();
+            string? text = await ReadClipboardTextWithRetry();
             if (string.IsNullOrEmpty(text))
                 return;
 
@@ -290,9 +290,12 @@ public class ClipboardMonitorService
     }
 
     // OpenClipboard can transiently fail while another process holds the clipboard.
-    // A short bounded retry smooths over that contention without blocking the UI
-    // for long. Returns null when the clip carries no text or stays locked.
-    private static string? ReadClipboardTextWithRetry()
+    // A short bounded retry smooths over that contention. The back-off must be an
+    // awaited delay, never Thread.Sleep: this runs on the dispatcher thread (Clipboard
+    // requires STA), and a synchronous sleep here stalls every open window for up to
+    // retries x delay whenever another app holds the clipboard. Awaiting resumes on
+    // the same dispatcher, so the Clipboard calls stay on the correct thread.
+    private static async Task<string?> ReadClipboardTextWithRetry()
     {
         for (int attempt = 0; attempt < ClipboardReadRetries; attempt++)
         {
@@ -305,7 +308,7 @@ public class ClipboardMonitorService
             }
             catch
             {
-                Thread.Sleep(ClipboardReadRetryDelay);
+                await Task.Delay(ClipboardReadRetryDelay);
             }
         }
 

@@ -43,6 +43,11 @@ internal static class ChecklistHelper
     /// </summary>
     public const string GlyphFontFamily = "Segoe UI Symbol";
 
+    /// <summary>
+    /// Cached instance so line-metric lookups do not rebuild the family on every gesture.
+    /// </summary>
+    private static readonly FontFamily GlyphFont = new(GlyphFontFamily);
+
     /// <summary>Foreground applied to a checked item. Neutral grey reads as dimmed on light and dark themes alike.</summary>
     public static readonly Color CheckedForeground = Color.FromRgb(0x8A, 0x8A, 0x8A);
 
@@ -249,13 +254,108 @@ internal static class ChecklistHelper
         }
 
         TextRange glyphRange = new(glyphStart, glyphEnd);
-        glyphRange.ApplyPropertyValue(TextElement.FontFamilyProperty, new FontFamily(GlyphFontFamily));
+        glyphRange.ApplyPropertyValue(TextElement.FontFamilyProperty, GlyphFont);
         glyphRange.ApplyPropertyValue(TextElement.FontWeightProperty, FontWeights.Normal);
         glyphRange.ApplyPropertyValue(TextElement.FontStyleProperty, FontStyles.Normal);
 
         // An EMPTY collection, not null. TextDecorations inherits, so null leaves no local value and
         // an ancestor Span's strikethrough (which the RTF reader creates) would still cross the box.
         glyphRange.ApplyPropertyValue(Inline.TextDecorationsProperty, new TextDecorationCollection());
+
+        NormaliseGlyphLineBox(paragraph, glyphRange, glyphEnd);
+    }
+
+    /// <summary>
+    /// Shrinks the glyph run just enough that its line box never exceeds the body font's.
+    ///
+    /// WPF's default line stacking is MaxHeight: a line is as tall as its tallest run's font
+    /// metrics, and Segoe UI Symbol's line box (LineSpacing 1.3301) is ~15% taller than mono and
+    /// serif note fonts (Cascadia Mono 1.1621, Georgia 1.1362). Left at the body's size, the glyph
+    /// alone inflates every checklist line, which reads as 1.5 spacing next to plain lines. Scaling
+    /// the glyph's FontSize by the ratio of the two families' LineSpacing values equalises the line
+    /// boxes. FontSize survives the RTF round-trip, so unlike Paragraph.LineHeight this fix holds
+    /// after a reload without any layout property that RTF would drop.
+    /// </summary>
+    private static void NormaliseGlyphLineBox(Paragraph paragraph, TextRange glyphRange, TextPointer bodyStart)
+    {
+        // Prefer the first body run's font; a paragraph-level lookup only sees the document default
+        // because note fonts are applied at run level. Mixed body formatting returns UnsetValue and
+        // falls back to the paragraph's inherited values.
+        FontFamily bodyFamily = paragraph.FontFamily;
+        double bodySize = paragraph.FontSize;
+
+        TextRange body = new(bodyStart, paragraph.ContentEnd);
+        if (!body.IsEmpty)
+        {
+            if (body.GetPropertyValue(TextElement.FontFamilyProperty) is FontFamily family)
+                bodyFamily = family;
+            if (body.GetPropertyValue(TextElement.FontSizeProperty) is double size)
+                bodySize = size;
+        }
+
+        double factor;
+        try
+        {
+            // Never scale UP: a body font with taller metrics than the glyph font cannot be
+            // inflated by the glyph in the first place.
+            factor = Math.Min(1.0, bodyFamily.LineSpacing / GlyphFont.LineSpacing);
+        }
+        catch (ArgumentException)
+        {
+            // An unresolvable family (note authored on a machine with a font this one lacks) must
+            // not break checklist gestures; full size merely restores the old spacing.
+            factor = 1.0;
+        }
+
+        glyphRange.ApplyPropertyValue(TextElement.FontSizeProperty, bodySize * factor);
+    }
+
+    /// <summary>
+    /// Re-pins every checklist item in <paramref name="document"/>. Run after an RTF load so notes
+    /// saved before the line-box normalisation existed repair their spacing on open, and so the
+    /// separator-space font pin survives edits made by older builds.
+    /// </summary>
+    public static void NormaliseDocument(FlowDocument document)
+    {
+        foreach (Paragraph paragraph in AllParagraphs(document.Blocks))
+        {
+            if (IsChecklistItem(paragraph))
+            {
+                PinGlyphFont(paragraph);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Flattens a block tree to its paragraphs. Lists and sections nest blocks, and checklist
+    /// items can sit inside list items, so a top-level walk alone would miss them.
+    /// </summary>
+    private static IEnumerable<Paragraph> AllParagraphs(IEnumerable<Block> blocks)
+    {
+        foreach (Block block in blocks)
+        {
+            switch (block)
+            {
+                case Paragraph paragraph:
+                    yield return paragraph;
+                    break;
+                case List list:
+                    foreach (ListItem item in list.ListItems)
+                    {
+                        foreach (Paragraph nested in AllParagraphs(item.Blocks))
+                        {
+                            yield return nested;
+                        }
+                    }
+                    break;
+                case Section section:
+                    foreach (Paragraph nested in AllParagraphs(section.Blocks))
+                    {
+                        yield return nested;
+                    }
+                    break;
+            }
+        }
     }
 
     /// <summary>

@@ -16,6 +16,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Sticky notes take no pen or touch input, and WPF's RealTimeStylus stack is a
+         documented hang class on Windows 11 (dotnet/wpf #5642, #11486: PenThreadWorker
+         deadlocks when a pen-capable HID device appears). Opting out retires that
+         entire failure mode; mouse and keyboard input are unaffected. -->
+    <RuntimeHostConfigurationOption Include="Switch.System.Windows.Input.Stylus.DisableStylusAndTouchSupport" Value="true" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="H.NotifyIcon.Wpf" Version="2.4.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3" />
   </ItemGroup>
