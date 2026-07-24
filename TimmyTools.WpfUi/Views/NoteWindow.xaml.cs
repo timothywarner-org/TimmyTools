@@ -1,15 +1,20 @@
 ﻿using Microsoft.Win32;
 using System.ComponentModel;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
 using TimmyTools.Core.Enums;
 using TimmyTools.WpfUi.Helpers;
+using TimmyTools.WpfUi.Interop;
+using TimmyTools.WpfUi.Interop.Constants;
+using TimmyTools.WpfUi.Interop.Structures;
 using TimmyTools.WpfUi.Messages;
 using TimmyTools.WpfUi.Models;
 using TimmyTools.WpfUi.Services;
@@ -69,7 +74,9 @@ public partial class NoteWindow : Window
         AtomicClockButton.Click += AtomicClockButton_Click;
         BreakTimerButton.Click += BreakTimerButton_Click;
         ClipboardButton.Click += ClipboardButton_Click;
+        RollUpButton.Click += RollUpButton_Click;
         MinimizeButton.Click += MinimizeButton_Click;
+        MaximizeButton.Click += MaximizeButton_Click;
         CloseButton.Click += CloseButton_Click;
 
         PopulateTitleBarContextMenu();
@@ -96,9 +103,15 @@ public partial class NoteWindow : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        _viewModel.OnWindowLoaded(
-            ScreenHelper.GetWindowHandle(this)
-        );
+        nint windowHandle = ScreenHelper.GetWindowHandle(this);
+        _viewModel.OnWindowLoaded(windowHandle);
+
+        // Hook the window message loop so a borderless (WindowStyle=None) note that the user
+        // maximises via Aero Snap / Win+Up / the title-bar Maximise button clamps to the monitor
+        // work area instead of covering the taskbar. Without WM_GETMINMAXINFO handling a borderless
+        // window maximises to the full monitor and hides the taskbar.
+        HwndSource? source = HwndSource.FromHwnd(windowHandle);
+        source?.AddHook(WindowProc);
 
         // Subscribe to text changes after initial load so the first
         // content load does not trigger an unwanted resize.
@@ -118,11 +131,64 @@ public partial class NoteWindow : Window
         {
             if (_noteSettings.MinimizeMode == MinimizeMode.Prevent)
                 WindowState = WindowState.Normal;
+
+            return;
         }
-        else if (WindowState == WindowState.Normal)
+
+        // A rolled-up note has no body to maximise into, so refuse maximise while shaded and
+        // drop it back to its rolled-up Normal state.
+        if (WindowState == WindowState.Maximized && _isRolledUp)
         {
-            _viewModel.UpdateVisibility();
+            WindowState = WindowState.Normal;
+            return;
         }
+
+        // Run on both Normal and Maximized. UpdateVisibility issues the SetWindowPos(FRAMECHANGED)
+        // that forces the borderless frame to recompute, which is what clears the stale title bar
+        // and unpainted body seen when restoring a maximised note. Update the Maximise button glyph
+        // to match the current state.
+        _viewModel.UpdateVisibility();
+        UpdateMaximizeButtonGlyph();
+    }
+
+    private nint WindowProc(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
+    {
+        if (msg == WM.GETMINMAXINFO)
+        {
+            ClampMaximizedBoundsToWorkArea(hwnd, lParam);
+            handled = true;
+        }
+
+        return nint.Zero;
+    }
+
+    // Constrain a maximised borderless note to the work area of the monitor it sits on, so it does
+    // not paint over the taskbar. WPF's default maximised bounds for a WindowStyle=None window are
+    // the full monitor rectangle.
+    private static void ClampMaximizedBoundsToWorkArea(nint hwnd, nint lParam)
+    {
+        nint hMonitor = User32.MonitorFromWindow(hwnd, MONITOR.DEFAULTTONEAREST);
+        if (hMonitor == nint.Zero)
+            return;
+
+        MONITORINFO monitorInfo = new();
+        monitorInfo.cbSize = Marshal.SizeOf<MONITORINFO>();
+        if (!User32.GetMonitorInfoW(hMonitor, ref monitorInfo))
+            return;
+
+        MINMAXINFO minMaxInfo = Marshal.PtrToStructure<MINMAXINFO>(lParam);
+
+        RECT work = monitorInfo.rcWork;
+        RECT monitor = monitorInfo.rcMonitor;
+
+        // ptMaxPosition and ptMaxSize are expressed relative to the monitor origin, so subtract the
+        // monitor's own top-left to turn the absolute work-area rectangle into monitor-local values.
+        minMaxInfo.ptMaxPosition.x = work.Left - monitor.Left;
+        minMaxInfo.ptMaxPosition.y = work.Top - monitor.Top;
+        minMaxInfo.ptMaxSize.x = work.Right - work.Left;
+        minMaxInfo.ptMaxSize.y = work.Bottom - work.Top;
+
+        Marshal.StructureToPtr(minMaxInfo, lParam, true);
     }
 
     private void Window_MouseEnter(object sender, MouseEventArgs e)
@@ -183,7 +249,10 @@ public partial class NoteWindow : Window
 
     private void NoteTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (!_isInitialLoadComplete || _isRolledUp)
+        // Skip auto-resize unless the window is in its Normal state. Writing Height while maximised
+        // would fight the maximise and leak a work-area-clamped height into the TwoWay-bound
+        // Note.Height, which would then persist and reopen the note at the wrong size.
+        if (!_isInitialLoadComplete || _isRolledUp || WindowState != WindowState.Normal)
             return;
 
         AutoResizeHeight();
@@ -236,8 +305,11 @@ public partial class NoteWindow : Window
 
         if (e.ClickCount >= 2)
         {
+            // Double-click on the title bar is the conventional maximise/restore gesture. Roll-up
+            // moved to its own title-bar button and the context menu when the three-button set was
+            // added, so this no longer toggles the window shade.
             e.Handled = true;
-            ToggleRollUp();
+            ToggleMaximizeRestore();
             return;
         }
 
@@ -312,6 +384,44 @@ public partial class NoteWindow : Window
         WindowState = WindowState.Minimized;
     }
 
+    private void MaximizeButton_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleMaximizeRestore();
+    }
+
+    private void RollUpButton_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleRollUp();
+    }
+
+    private void ToggleMaximizeRestore()
+    {
+        // A shaded note cannot be maximised; drop it first so maximise acts on the full note.
+        if (_isRolledUp)
+            ToggleRollUp();
+
+        WindowState = WindowState == WindowState.Maximized
+            ? WindowState.Normal
+            : WindowState.Maximized;
+    }
+
+    private void UpdateMaximizeButtonGlyph()
+    {
+        // Show the restore (overlapping-squares) glyph while maximised and the maximise (single
+        // square) glyph otherwise, matching the standard Windows title-bar affordance. The glyph
+        // Paths sit inside the button's ControlTemplate, so they are not code-behind fields and
+        // must be resolved through the template's namescope.
+        bool isMaximized = WindowState == WindowState.Maximized;
+
+        if (MaximizeButton.Template?.FindName("MaximizeGlyph", MaximizeButton) is UIElement maximizeGlyph)
+            maximizeGlyph.Visibility = isMaximized ? Visibility.Collapsed : Visibility.Visible;
+
+        if (MaximizeButton.Template?.FindName("RestoreGlyph", MaximizeButton) is UIElement restoreGlyph)
+            restoreGlyph.Visibility = isMaximized ? Visibility.Visible : Visibility.Collapsed;
+
+        MaximizeButton.ToolTip = isMaximized ? "Restore" : "Maximize";
+    }
+
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.Note.IsOpen = false;
@@ -361,6 +471,11 @@ public partial class NoteWindow : Window
                 MessageBoxImage.Error
             );
         }
+    }
+
+    private void RollUpMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleRollUp();
     }
 
     private void ResetMenuItem_Click(object sender, RoutedEventArgs e)

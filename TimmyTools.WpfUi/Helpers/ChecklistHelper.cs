@@ -319,6 +319,14 @@ internal static class ChecklistHelper
     {
         foreach (Paragraph paragraph in AllParagraphs(document.Blocks))
         {
+            // Clear only the vertical (top/bottom) paragraph margin the RTF reader may have
+            // materialised as a local value from \sa/\sb space-before/space-after control words
+            // (notably on Word-paste RTF). A local margin outranks the implicit zero-margin
+            // Paragraph style on the text box, so without this a pasted paragraph would still
+            // render loose. Left/Right are preserved so tab indentation (which writes Margin.Left)
+            // survives the load.
+            paragraph.Margin = new Thickness(paragraph.Margin.Left, 0, paragraph.Margin.Right, 0);
+
             if (IsChecklistItem(paragraph))
             {
                 PinGlyphFont(paragraph);

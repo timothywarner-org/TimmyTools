@@ -205,6 +205,29 @@
                     </Button.Template>
                 </Button>
 
+                <!-- Roll-Up / Window Shade Button. Double-clicking the title bar now maximises
+                     instead of rolling up, so roll-up keeps a dedicated trigger here (and in the
+                     title-bar context menu). Collapses the note to just its title bar. -->
+                <Button Name="RollUpButton"
+                        Margin="6,0,0,0"
+                        ToolTip="Roll Up"
+                        Style="{StaticResource TitleBarButtonStyle}">
+                    <Button.Template>
+                        <ControlTemplate>
+                            <Canvas>
+                                <Rectangle Width="20" Height="20" Fill="Transparent" />
+                                <!-- Bar plus chevron: collapse to the title bar -->
+                                <Path Data="M 4,5 H 16 M 6,10 L 10,14 L 14,10"
+                                      Stroke="{Binding Note.TitleGridButtonForeground}"
+                                      StrokeThickness="2"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      d:Stroke="#464646"/>
+                            </Canvas>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
             </StackPanel>
 
             <!-- Title Display -->
@@ -259,6 +282,39 @@
                     </Button.Template>
                 </Button>
 
+                <!-- Maximize / Restore Button. Glyphs swap in code-behind (UpdateMaximizeButtonGlyph):
+                     a single square when the note can be maximised, overlapping squares when it can
+                     be restored. Double-clicking the title bar toggles the same action. -->
+                <Button Name="MaximizeButton"
+                        Margin="6,0,0,0"
+                        ToolTip="Maximize"
+                        Style="{StaticResource TitleBarButtonStyle}">
+                    <Button.Template>
+                        <ControlTemplate>
+                            <Canvas>
+                                <Rectangle Width="20" Height="20" Fill="Transparent" />
+                                <!-- Maximize glyph: a single square -->
+                                <Path Name="MaximizeGlyph"
+                                      Data="M 4,4 H 16 V 16 H 4 Z"
+                                      Stroke="{Binding Note.TitleGridButtonForeground}"
+                                      StrokeThickness="2"
+                                      StrokeLineJoin="Round"
+                                      Fill="Transparent"
+                                      d:Stroke="#464646"/>
+                                <!-- Restore glyph: two offset squares (hidden until maximised) -->
+                                <Path Name="RestoreGlyph"
+                                      Visibility="Collapsed"
+                                      Data="M 6,6 H 16 V 16 H 6 Z M 6,6 V 4 H 14 V 14 H 12"
+                                      Stroke="{Binding Note.TitleGridButtonForeground}"
+                                      StrokeThickness="2"
+                                      StrokeLineJoin="Round"
+                                      Fill="Transparent"
+                                      d:Stroke="#464646"/>
+                            </Canvas>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
                 <!-- Close Button -->
                 <Button Name="CloseButton"
                         Margin="6,0,0,0"
@@ -288,6 +344,7 @@
                     <Separator />
                     <MenuItem Header="Save" Click="SaveMenuItem_Click" />
                     <Separator />
+                    <MenuItem Header="Roll Up / Down" Click="RollUpMenuItem_Click" />
                     <MenuItem Header="Reset size" Click="ResetMenuItem_Click" />
                     <Separator />
                     <!-- Theme options are added dynamically in code behind -->

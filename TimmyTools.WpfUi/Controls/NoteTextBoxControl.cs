@@ -78,6 +78,18 @@ public partial class NoteTextBoxControl : RichTextBox
         _contextMenu = new NoteTextBoxContextMenu(this);
         ContextMenu = _contextMenu;
 
+        // WPF flow content gives every Paragraph an em-sized default (Auto) top/bottom margin,
+        // and adjacent margins collapse to the larger of the two, so each Enter yields roughly one
+        // blank line of gap that reads as 1.5x-2x spacing at any font - matching the reported
+        // "regardless of font" symptom. A sticky note wants every Enter to advance exactly one
+        // line. An implicit Paragraph style with Margin=0 reaches freshly typed paragraphs,
+        // live-editing before the first save, and paragraphs the RTF reader creates on load, with
+        // nothing persisted to the RTF file. Contrast the checklist glyph FontSize fix, which has
+        // to survive the round-trip and therefore could not use a layout property.
+        Style paragraphStyle = new(typeof(Paragraph));
+        paragraphStyle.Setters.Add(new Setter(Block.MarginProperty, new Thickness(0)));
+        Resources.Add(typeof(Paragraph), paragraphStyle);
+
         Loaded += (_, _) => UpdateCaretAppearance();
     }
 

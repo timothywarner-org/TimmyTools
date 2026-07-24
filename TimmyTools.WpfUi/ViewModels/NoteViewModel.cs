@@ -365,5 +365,16 @@ public class NoteViewModel : BaseViewModel
         }
 
         _ = User32.SetWindowLongPtrW(Note.WindowHandle, GWL.EXSTYLE, exStyle);
+
+        // Changing an extended style does not recompute the cached non-client frame. Windows
+        // keeps drawing the old frame until a SetWindowPos(FRAMECHANGED) forces a recalculation.
+        // Without this, restoring from a maximised or minimised state can leave the title bar
+        // painted at its previous (wrong) size while the body region fails to repaint.
+        _ = User32.SetWindowPos(
+            Note.WindowHandle,
+            0,
+            0, 0, 0, 0,
+            SWP.NOMOVE | SWP.NOSIZE | SWP.NOZORDER | SWP.NOACTIVATE | SWP.FRAMECHANGED
+        );
     }
 }
